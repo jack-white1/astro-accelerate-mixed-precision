@@ -2,7 +2,7 @@
 #define ASTRO_ACCELERATE_AA_PERIODICITY_PLAN_HPP
 
 #include <stdio.h>
-#include <aa_dedispersion_range.hpp>
+#include "aa_dedispersion_range.hpp"
 
 namespace astroaccelerate {
 

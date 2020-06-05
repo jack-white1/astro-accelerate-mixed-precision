@@ -64,6 +64,14 @@ public:
 		c_nDMs = ndms;
 		c_sampling_time = sampling_time_before_binning;
 	}
+
+	double dm_low() return(c_dm_low);
+	double dm_high() return(c_dm_high);
+	double dm_step() return(c_dm_step);
+	double sampling_time() return(c_sampling_time);
+	int inBin() return(c_inBin);
+	int nDMs() return(c_nDMs);
+	unsigned long int nTimesamples() return(c_nTimesamples);
 };
 
 } // namespace astroaccelerate
