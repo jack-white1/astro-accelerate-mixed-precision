@@ -30,6 +30,9 @@ public:
 		int ddtr_range_id;
 		int start_DM_trial;
 		int nDM_trials;
+		unsigned long int MSD_workarea_size_in_bytes; // memory required for MSD plane profile including memory for decimations, blocks of partial MSD results and memory for mean and stdev of decimated planes
+		unsigned long int MSD_profile_size_in_bytes; // memory required for final result of the MSD plane profile with interpolated MSD values for all widths
+		unsigned long int MSD_DIT_profile_size_in_bytes; = nDecimations*MSD_PARTIAL_SIZE*sizeof(float);
 	};
 
 	// TODO: process ranges individually
