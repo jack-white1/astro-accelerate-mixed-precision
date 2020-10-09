@@ -27,6 +27,96 @@
 
 namespace astroaccelerate {
 
+	//---------------------------------------------------------------------------------
+	//-------> Kahan MSD
+	void d_kahan_summation(float *signal, size_t nDMs, size_t nTimesamples, size_t offset, double *result, double *error, bool outlier_rejection, double old_mean, double old_stdev, double sigma){
+		double sum;
+		double sum_error;
+		double a,b;
+		size_t nElements = 0;
+		
+		double low  = old_mean - sigma*old_stdev;
+		double high = old_mean + sigma*old_stdev;
+		
+		sum=0;
+		sum_error=0;
+		for(size_t d=0;d<nDMs; d++){
+			for(size_t s=0; s<(nTimesamples-offset); s++){
+				double sample = signal[(size_t) (d*nTimesamples + s)];
+				if(outlier_rejection && (sample<low || sample>high)){
+				}
+				else{
+					a = sample - sum_error;
+					b = sum + a;
+					sum_error = (b - sum);
+					sum_error = sum_error - a;
+					sum = b;
+					nElements++;
+				}
+			}
+		}
+		*result = sum/nElements;
+		*error = sum_error;
+	}
+
+	void d_kahan_sd(float *signal, size_t nDMs, size_t nTimesamples, size_t offset, double mean, double *result, double *error, bool outlier_rejection, double old_mean, double old_stdev, double sigma){
+		double sum;
+		double sum_error;
+		double a,b,dtemp;
+		size_t nElements = 0;
+		
+		double low  = old_mean - sigma*old_stdev;
+		double high = old_mean + sigma*old_stdev;
+		
+		sum=0;
+		sum_error=0;
+		for(size_t d=0;d<nDMs; d++){
+			for(size_t s=0; s<(nTimesamples-offset); s++){
+				double sample = signal[(size_t) (d*nTimesamples + s)];
+				if(outlier_rejection && (sample<low || sample>high)){
+				}
+				else{
+					dtemp=(sample - sum_error - mean);
+					a=dtemp*dtemp;
+					b=sum+a;
+					sum_error=(b-sum);
+					sum_error=sum_error-a;
+					sum=b;
+					nElements++;
+				}
+			}
+		}
+		*result=sqrt(sum/nElements);
+		*error=sum_error;
+	}
+
+
+	void MSD_Kahan(float *h_input, size_t nDMs, size_t nTimesamples, size_t offset, double *mean, double *sd, bool outlier_rejection, double sigma){
+		double error, signal_mean, signal_sd;
+		double old_mean, old_stdev;
+		size_t nElements=nDMs*(nTimesamples-offset);
+		
+		d_kahan_summation(h_input, nDMs, nTimesamples, offset, &signal_mean, &error, false, 0, 1.0, 1.0);
+		d_kahan_sd(h_input, nDMs, nTimesamples, offset, signal_mean, &signal_sd, &error, false, 0, 1.0, 1.0);
+		
+		old_mean = signal_mean; old_stdev = signal_sd;
+		//printf("    Before outlier rejection: %e - %e\n", old_mean, old_stdev);
+		if(outlier_rejection){
+			for(int f=0; f<5; f++){
+				d_kahan_summation(h_input, nDMs, nTimesamples, offset, &signal_mean, &error, true, old_mean, old_stdev, sigma);
+				d_kahan_sd(h_input, nDMs, nTimesamples, offset, signal_mean, &signal_sd, &error, true, old_mean, old_stdev, sigma);
+				
+				old_mean = signal_mean; old_stdev = signal_sd;
+				//printf("      Iteration %d of outlier rejection: %e - %e\n", f, old_mean, old_stdev);
+			}
+		}
+
+		*mean=signal_mean;
+		*sd=signal_sd;
+	}
+	//-------> Kahan MSD
+	//---------------------------------------------------------------------------------
+
   void Create_list_of_boxcar_widths(std::vector<int> *boxcar_widths, std::vector<int> *BC_widths, int max_boxcar_width){
     int DIT_value, DIT_factor, width;
     DIT_value = 1;
@@ -190,7 +280,27 @@ namespace astroaccelerate {
     //---------> Comparison between interpolated values and computed values
     //-------------------------------------------------------------------------
 	
-
+    //-------------------------------------------------------------------------
+    //---------> Host MSD and MSD per DM trial
+    /*
+	float *h_output_buffer;
+	size_t ob_size          = ((size_t) nTimesamples)*((size_t) nDMs);
+	size_t ob_size_in_bytes = ((size_t) nTimesamples)*((size_t) nDMs)*sizeof(float);
+	h_output_buffer = new float[ob_size];
+	cudaMemcpy(h_output_buffer, output_buffer, ob_size_in_bytes, cudaMemcpyDeviceToHost);
+	double mean, sd;
+	bool enable_outlier_rejection = (enable_msd_baselinenoise==1?true:false);
+	MSD_Kahan(h_output_buffer, nDMs, nTimesamples, 0, &mean, &sd, enable_outlier_rejection, OR_sigma_multiplier);
+	printf("----> CPU mean: %e; stdev: %e\n", mean, sd);
+	printf("------------------ MSD per DM trial ----------------------\n");
+	for(size_t d=0; d<nDMs; d++){
+		MSD_Kahan(&h_output_buffer[d*nTimesamples], 1, nTimesamples, 0, &mean, &sd, enable_outlier_rejection, OR_sigma_multiplier);
+		printf("--------> CPU per DM %d mean: %e; stdev: %e\n", d, mean, sd);
+	}	
+	delete [] h_output_buffer;
+	*/
+	//------------------------------------------------------------------------<
+    
 	
     //-------------------------------------------------------------------------
     //------------ Using MSD_plane_profile

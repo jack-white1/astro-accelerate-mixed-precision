@@ -10,6 +10,7 @@
 #include "aa_device_MSD_shared_kernel_functions.hpp"
 //#define MSD_PLANE_DEBUG
 //#define MSD_PLANE_EXPORT
+//#define MSD_PLANE_ASSUME_WHITENOISE
 
 namespace astroaccelerate {
 
@@ -507,23 +508,45 @@ namespace astroaccelerate {
 #ifdef MSD_PLANE_EXPORT
     float *h_MSD_DIT, *h_MSD_interpolated;
     h_MSD_DIT = new float[nMSDs*MSD_RESULTS_SIZE];
-    h_MSD_interpolated = new float[nWidths*MSD_RESULTS_SIZE];
+    h_MSD_interpolated = new float[nWidths*2];
     e = cudaMemcpy(h_MSD_DIT, d_MSD_DIT, nMSDs*MSD_RESULTS_SIZE*sizeof(float), cudaMemcpyDeviceToHost);
 
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_device_MSD_plane_profile.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
-    e = cudaMemcpy(h_MSD_interpolated, d_MSD_interpolated, nWidths*MSD_RESULTS_SIZE*sizeof(float), cudaMemcpyDeviceToHost);
+    e = cudaMemcpy(h_MSD_interpolated, d_MSD_interpolated, nWidths*2*sizeof(float), cudaMemcpyDeviceToHost);
     
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_device_MSD_plane_profile.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
+	for(int ii=0; ii<nWidths; ii++){
+		if(h_boxcar_widths->operator[](ii)<=max_width_performed){
+			printf("boxcar: %d; mean=%e; stdev=%e;\n", h_boxcar_widths->operator[](ii), h_MSD_interpolated[ii*2], h_MSD_interpolated[ii*2 + 1]);
+		}
+	}
     MSD_Export_plane(filename, h_MSD_DIT, h_MSD_DIT_widths, h_MSD_interpolated, h_boxcar_widths, max_width_performed);
+	#ifdef MSD_PLANE_ASSUME_WHITENOISE
+	double init_mean = h_MSD_interpolated[0], init_stdev = h_MSD_interpolated[1];
+	for(int ii=0; ii<nWidths; ii++){
+		if(h_boxcar_widths->operator[](ii)<=max_width_performed){
+			h_MSD_interpolated[ii*2] = init_mean*h_boxcar_widths->operator[](ii);
+			h_MSD_interpolated[ii*2 + 1] = init_stdev*sqrt(h_boxcar_widths->operator[](ii));
+		}
+	}
+	for(int ii=0; ii<nWidths; ii++){
+		if(h_boxcar_widths->operator[](ii)<=max_width_performed){
+			printf("boxcar: %d; mean=%e; stdev=%e;\n", h_boxcar_widths->operator[](ii), h_MSD_interpolated[ii*2], h_MSD_interpolated[ii*2 + 1]);
+		}
+	}
+	cudaMemcpy(d_MSD_interpolated, h_MSD_interpolated, nWidths*2*sizeof(float), cudaMemcpyHostToDevice);
+	#endif
     delete[] h_MSD_DIT;
     delete[] h_MSD_interpolated;
 #endif
+
+
 	
     //	checkCudaErrors(cudaMemcpy(d_MSD_interpolated, h_MSD_interpolated, nWidths*MSD_INTER_SIZE*sizeof(float), cudaMemcpyHostToDevice));
 	
