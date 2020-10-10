@@ -89,12 +89,25 @@ int main(int argc, char *argv[]) {
 
 	//Why this is here we have already configured the pipeline? Not used later delete?
 	//aa_config configuration(pipeline);   // Set the pipeline and other run settings that would come from an input_file
+	
+	// MSD baseline noise should be moved to new component which would be candidate selection
+	bool msd_baseline_noise = false;
+	if (pipeline_options.find(aa_pipeline::component_option::msd_baseline_noise) != pipeline_options.end()) {
+		msd_baseline_noise = true;
+	}
 
 	// Move this to pipeline
 	if (user_flags.rfi == 1) {
 		LOG(log_level::notice, "Performing host RFI reduction. This feature is experimental.");
 		rfi(filterbank_metadata.nsamples(), filterbank_metadata.nchans(), filterbank_datafile.input_buffer_modifiable());
 	}
+	
+	int data_renormalization = 0;
+	if (data_renormalization == 1){
+		LOG(log_level::notice, "Performing host data normalization. This feature is experimental.");
+		input_data_renormalization(filterbank_metadata.nsamples(), filterbank_metadata.nchans(), filterbank_datafile.input_buffer_modifiable(), msd_baseline_noise, user_flags.sigma_constant);
+	}
+
 
 	// What is this doing
 	aa_pipeline_api<unsigned short> pipeline_manager(
@@ -103,12 +116,6 @@ int main(int argc, char *argv[]) {
 		filterbank_metadata,
 		filterbank_datafile.input_buffer().data(),
 		selected_card_info);
-
-	// MSD baseline noise should be moved to new component which would be candidate selection
-	bool msd_baseline_noise = false;
-	if (pipeline_options.find(aa_pipeline::component_option::msd_baseline_noise) != pipeline_options.end()) {
-		msd_baseline_noise = true;
-	}
 
 	ddtr_plan.set_enable_msd_baseline_noise(msd_baseline_noise);
 

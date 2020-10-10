@@ -4,6 +4,7 @@
 
 #include "aa_params.hpp"
 #include "aa_host_rfi.hpp"
+#include "aa_host_export.hpp"
 
 namespace astroaccelerate {
 
@@ -504,5 +505,252 @@ namespace astroaccelerate {
     free(spectra_var);
     free(stage);
   }
+
+
+	//---------------------------------------------------------------------------------
+	//-------> Kahan MSD
+	void d_kahan_summation(float *signal, size_t nDMs, size_t nTimesamples, size_t offset, double *result, double *error, bool outlier_rejection, double old_mean, double old_stdev, double sigma){
+		double sum;
+		double sum_error;
+		double a,b;
+		size_t nElements = 0;
+		
+		double low  = old_mean - sigma*old_stdev;
+		double high = old_mean + sigma*old_stdev;
+		
+		sum=0;
+		sum_error=0;
+		for(size_t d=0;d<nDMs; d++){
+			for(size_t s=0; s<(nTimesamples-offset); s++){
+				double sample = signal[(size_t) (d*nTimesamples + s)];
+				if(outlier_rejection && (sample<low || sample>high)){
+				}
+				else{
+					a = sample - sum_error;
+					b = sum + a;
+					sum_error = (b - sum);
+					sum_error = sum_error - a;
+					sum = b;
+					nElements++;
+				}
+			}
+		}
+		*result = sum/nElements;
+		*error = sum_error;
+	}
+
+	void d_kahan_sd(float *signal, size_t nDMs, size_t nTimesamples, size_t offset, double mean, double *result, double *error, bool outlier_rejection, double old_mean, double old_stdev, double sigma){
+		double sum;
+		double sum_error;
+		double a,b,dtemp;
+		size_t nElements = 0;
+		
+		double low  = old_mean - sigma*old_stdev;
+		double high = old_mean + sigma*old_stdev;
+		
+		sum=0;
+		sum_error=0;
+		for(size_t d=0;d<nDMs; d++){
+			for(size_t s=0; s<(nTimesamples-offset); s++){
+				double sample = signal[(size_t) (d*nTimesamples + s)];
+				if(outlier_rejection && (sample<low || sample>high)){
+				}
+				else{
+					dtemp=(sample - sum_error - mean);
+					a=dtemp*dtemp;
+					b=sum+a;
+					sum_error=(b-sum);
+					sum_error=sum_error-a;
+					sum=b;
+					nElements++;
+				}
+			}
+		}
+		*result=sqrt(sum/nElements);
+		*error=sum_error;
+	}
+
+
+	void MSD_Kahan(float *h_input, size_t nDMs, size_t nTimesamples, size_t offset, double *mean, double *sd, bool outlier_rejection, double sigma){
+		double error, signal_mean, signal_sd;
+		double old_mean, old_stdev;
+		size_t nElements=nDMs*(nTimesamples-offset);
+		
+		d_kahan_summation(h_input, nDMs, nTimesamples, offset, &signal_mean, &error, false, 0, 1.0, 1.0);
+		d_kahan_sd(h_input, nDMs, nTimesamples, offset, signal_mean, &signal_sd, &error, false, 0, 1.0, 1.0);
+		
+		old_mean = signal_mean; old_stdev = signal_sd;
+		//printf("    Before outlier rejection: %e - %e\n", old_mean, old_stdev);
+		if(outlier_rejection){
+			for(int f=0; f<5; f++){
+				d_kahan_summation(h_input, nDMs, nTimesamples, offset, &signal_mean, &error, true, old_mean, old_stdev, sigma);
+				d_kahan_sd(h_input, nDMs, nTimesamples, offset, signal_mean, &signal_sd, &error, true, old_mean, old_stdev, sigma);
+				
+				old_mean = signal_mean; old_stdev = signal_sd;
+				//printf("      Iteration %d of outlier rejection: %e - %e\n", f, old_mean, old_stdev);
+			}
+		}
+
+		*mean=signal_mean;
+		*sd=signal_sd;
+	}
+	//-------> Kahan MSD
+	//---------------------------------------------------------------------------------
+
+	void export_input_data(size_t nsamp, size_t nchans, std::vector<unsigned short> &input_buffer, const char *filename){
+		float *temp;
+		temp = new float[nsamp*nchans];
+		
+		for(size_t t=0; t<nsamp; t++){
+			// transfer data into temporary array
+			for(size_t c=0; c<nchans; c++){
+				temp[c + nchans*t] = (float) input_buffer[c  + nchans*t];
+			}
+		}
+		
+		Export_data_as_list(temp, nchans, 1.0, 0, nsamp/10, 1.0, 0, filename, 5000);
+
+		delete[] temp;
+	}
+
+	void input_data_renormalization(size_t nsamp, size_t nchans, std::vector<unsigned short> &input_buffer, bool enable_outlier_rejection, float sigma){
+		int per;
+		
+		export_input_data(nsamp, nchans, input_buffer, "before_data");
+		
+		float *temp_spectrum;
+		temp_spectrum = new float[nchans];
+		per = 0;
+		for(size_t t=0; t<nsamp; t++){
+			// transfer data into temporary array
+			for(size_t c=0; c<nchans; c++){
+				temp_spectrum[c] = (float) input_buffer[c  + nchans*t];
+			}
+			// calculation of MSD
+			double mean, stdev;
+			MSD_Kahan(temp_spectrum, 1, nchans, 0, &mean, &stdev, enable_outlier_rejection, sigma);
+			// renormalization
+			mean = mean - 127.5;
+			for(size_t c=0; c<nchans; c++){
+				input_buffer[c  + nchans*t] = (unsigned short)( (float)input_buffer[c  + nchans*t] - mean);
+			}
+			if(t%(nsamp/100)==0) {
+				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
+				else printf(".");
+				fflush(stdout);
+				per++;
+			}
+		}
+		printf("100%%\n");
+		delete [] temp_spectrum;
+		
+		per = 0;
+		float *temp_time;
+		temp_time = new float[nsamp];
+		for(size_t c=0; c<nchans; c++){
+			// transfer data into temporary array
+			for(size_t t=0; t<nsamp; t++){
+				temp_time[t] = (float) input_buffer[c  + nchans*t];
+			}
+			// calculation of MSD
+			double mean, stdev;
+			MSD_Kahan(temp_time, 1, nchans, 0, &mean, &stdev, enable_outlier_rejection, sigma);
+			// renormalization
+			mean = mean - 127.5;
+			for(size_t t=0; t<nsamp; t++){
+				input_buffer[c  + nchans*t] = (unsigned short)( (float)input_buffer[c  + nchans*t] - mean);
+			}
+			if(c%(nchans/100)==0) {
+				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
+				else printf(".");
+				fflush(stdout);
+				per++;
+			}
+		}
+		printf("100%%\n");		
+		delete [] temp_time;
+		
+		export_input_data(nsamp, nchans, input_buffer, "after_data");
+	}
+	
+	void CPU_corner_turn(float *data, float *CT_data, size_t primary_size, size_t secondary_size){
+		for(int s=0; s<secondary_size; s++){
+			for(int p=0; p<primary_size; p++){
+				CT_data[p*secondary_size + s]=data[s*primary_size + p];
+			}
+		}
+	}
+	
+	void dedisperse_DM_renormalization(size_t nDMs, size_t nTimesamples, float *input_buffer, bool enable_outlier_rejection, float sigma){
+		int per;
+		
+		float *CTtemp;
+		CTtemp = new float[nTimesamples*nDMs];
+		printf("Transpose..."); fflush(stdout);
+		CPU_corner_turn(input_buffer, CTtemp, nTimesamples, nDMs);
+		printf(" done.\n");
+		
+		per = 0;
+		float *temp_time;
+		temp_time = new float[nDMs];
+		for(size_t t=0; t<nTimesamples; t++){
+			// transfer data into temporary array
+			for(size_t d=0; d<nDMs; d++){
+				temp_time[d] = CTtemp[d + t*nDMs];
+			}
+			// calculation of MSD
+			double mean, stdev;
+			MSD_Kahan(temp_time, 1, nDMs, 0, &mean, &stdev, enable_outlier_rejection, sigma);
+			// renormalization
+			mean = mean - 127.5;
+			for(size_t d=0; d<nDMs; d++){
+				CTtemp[d + t*nDMs] = CTtemp[d + t*nDMs] - mean;
+			}
+			if(t%(nTimesamples/100)==0) {
+				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
+				else printf(".");
+				fflush(stdout);
+				per++;
+			}
+		}
+		printf("100%%\n");	
+
+		printf("Transpose..."); fflush(stdout);
+		CPU_corner_turn(CTtemp, input_buffer, nDMs, nTimesamples);
+		printf(" done.\n");
+		
+		delete [] temp_time;
+		delete [] CTtemp;
+	}
+
+	void dedisperse_time_renormalization(size_t nDMs, size_t nTimesamples, float *input_buffer, bool enable_outlier_rejection, float sigma){
+		int per;
+		
+		per = 0;
+		float *temp_time;
+		temp_time = new float[nTimesamples];
+		for(size_t d=0; d<nDMs; d++){
+			// transfer data into temporary array
+			for(size_t t=0; t<nTimesamples; t++){
+				temp_time[t] = input_buffer[d*nTimesamples + t];
+			}
+			// calculation of MSD
+			double mean, stdev;
+			MSD_Kahan(temp_time, 1, nTimesamples, 0, &mean, &stdev, enable_outlier_rejection, sigma);
+			// renormalization
+			mean = mean - 127.5;
+			for(size_t t=0; t<nTimesamples; t++){
+				input_buffer[d*nTimesamples + t] = input_buffer[d*nTimesamples + t] - mean;
+			}
+			if(d%(nDMs/100)==0) {
+				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
+				else printf(".");
+				fflush(stdout);
+				per++;
+			}
+		}
+		printf("100%%\n");		
+		delete [] temp_time;
+	}
 
 } //namespace astroaccelerate

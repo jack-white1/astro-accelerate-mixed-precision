@@ -21,6 +21,8 @@
 
 #include "aa_device_analysis.hpp"
 
+#include "aa_host_rfi.hpp"
+
 // \todo Make BC_plan for arbitrary long pulses, by reusing last element in the plane.
 // \todo cudaMalloc((void**) &gmem_peak_pos, 1*sizeof(int)); has no corresponding cudaFree.
 // \todo cudaMemset((void*) gmem_peak_pos, 0, sizeof(int));  has no corresponding cudaFree.
@@ -190,6 +192,22 @@ namespace astroaccelerate {
     //---------> Comparison between interpolated values and computed values
     //-------------------------------------------------------------------------
 	
+
+
+    //-------------------------------------------------------------------------
+    //---------> Renormalization
+	float *h_temp;
+	h_temp = new float[nTimesamples*nDMs];
+	cudaMemcpy(h_temp, output_buffer, nTimesamples*nDMs*sizeof(float), cudaMemcpyDeviceToHost);
+	
+	//printf("Renormalization int time\n");
+	//dedisperse_time_renormalization((size_t) nDMs, (size_t) nTimesamples, h_temp, enable_msd_baselinenoise, OR_sigma_multiplier);
+	
+	printf("Renormalization int dm\n");
+	dedisperse_DM_renormalization((size_t) nDMs, (size_t) nTimesamples, h_temp, enable_msd_baselinenoise, OR_sigma_multiplier);
+	
+	cudaMemcpy(output_buffer, h_temp, nTimesamples*nDMs*sizeof(float), cudaMemcpyHostToDevice);
+	delete[] h_temp;
 
 	
     //-------------------------------------------------------------------------
