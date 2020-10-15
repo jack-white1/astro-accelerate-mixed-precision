@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 		rfi(filterbank_metadata.nsamples(), filterbank_metadata.nchans(), filterbank_datafile.input_buffer_modifiable());
 	}
 	
-	int data_renormalization = 0;
+	int data_renormalization = 1;
 	if (data_renormalization == 1){
 		LOG(log_level::notice, "Performing host data normalization. This feature is experimental.");
 		input_data_renormalization(filterbank_metadata.nsamples(), filterbank_metadata.nchans(), filterbank_datafile.input_buffer_modifiable(), msd_baseline_noise, user_flags.sigma_constant);
