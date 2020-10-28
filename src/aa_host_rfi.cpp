@@ -574,7 +574,6 @@ namespace astroaccelerate {
 	void MSD_Kahan(float *h_input, size_t nDMs, size_t nTimesamples, size_t offset, double *mean, double *sd, bool outlier_rejection, double sigma){
 		double error, signal_mean, signal_sd;
 		double old_mean, old_stdev;
-		size_t nElements=nDMs*(nTimesamples-offset);
 		
 		d_kahan_summation(h_input, nDMs, nTimesamples, offset, &signal_mean, &error, false, 0, 1.0, 1.0);
 		d_kahan_sd(h_input, nDMs, nTimesamples, offset, signal_mean, &signal_sd, &error, false, 0, 1.0, 1.0);
@@ -633,11 +632,11 @@ namespace astroaccelerate {
 			mean = mean - 127.5;
 			for(size_t c=0; c<nchans; c++){
 				unsigned short value;
-				float result = (float)input[c  + nchans*t] - mean;
+				float result = (float)input_buffer[c  + nchans*t] - mean;
 				if(result<0) value = 0;
 				else if(result>255) value = 255;
 				else value = (unsigned short) result;
-				input[c  + nchans*t] = value;
+				input_buffer[c  + nchans*t] = value;
 			}
 			if(t%(nsamp/100)==0) {
 				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
@@ -664,11 +663,11 @@ namespace astroaccelerate {
 			mean = mean - 127.5;
 			for(size_t t=0; t<nsamp; t++){
 				unsigned short value;
-				float result = (float)input[c  + nchans*t] - mean;
+				float result = (float)input_buffer[c  + nchans*t] - mean;
 				if(result<0) value = 0;
 				else if(result>255) value = 255;
 				else value = (unsigned short) result;
-				input[c  + nchans*t] = value;
+				input_buffer[c  + nchans*t] = value;
 			}
 			if(c%(nchans/100)==0) {
 				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
@@ -684,8 +683,8 @@ namespace astroaccelerate {
 	}
 	
 	void CPU_corner_turn(float *data, float *CT_data, size_t primary_size, size_t secondary_size){
-		for(int s=0; s<secondary_size; s++){
-			for(int p=0; p<primary_size; p++){
+		for(size_t s=0; s<secondary_size; s++){
+			for(size_t p=0; p<primary_size; p++){
 				CT_data[p*secondary_size + s]=data[s*primary_size + p];
 			}
 		}
