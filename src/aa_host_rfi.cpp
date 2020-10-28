@@ -632,7 +632,12 @@ namespace astroaccelerate {
 			// renormalization
 			mean = mean - 127.5;
 			for(size_t c=0; c<nchans; c++){
-				input_buffer[c  + nchans*t] = (unsigned short)( (float)input_buffer[c  + nchans*t] - mean);
+				unsigned short value;
+				float result = (float)input[c  + nchans*t] - mean;
+				if(result<0) value = 0;
+				else if(result>255) value = 255;
+				else value = (unsigned short) result;
+				input[c  + nchans*t] = value;
 			}
 			if(t%(nsamp/100)==0) {
 				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
@@ -658,7 +663,12 @@ namespace astroaccelerate {
 			// renormalization
 			mean = mean - 127.5;
 			for(size_t t=0; t<nsamp; t++){
-				input_buffer[c  + nchans*t] = (unsigned short)( (float)input_buffer[c  + nchans*t] - mean);
+				unsigned short value;
+				float result = (float)input[c  + nchans*t] - mean;
+				if(result<0) value = 0;
+				else if(result>255) value = 255;
+				else value = (unsigned short) result;
+				input[c  + nchans*t] = value;
 			}
 			if(c%(nchans/100)==0) {
 				if(per==0 || per==25 || per==50 || per==75) printf("%d%%", per);
