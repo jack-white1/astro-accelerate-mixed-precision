@@ -223,7 +223,7 @@ namespace astroaccelerate {
 #endif
     //!TEST!: replace templates here. Template width: numkern; padded width: KERNLEN
   
-    cudaError_t e = cudaMemcpy( d_kernel, h_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyHostToDevice); // upload kernels to GPU
+    cudaError_t e = cudaMemcpy( d_kernel, h_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice); // upload kernels to GPU
     
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");

@@ -22,6 +22,8 @@
 #include "presto_funcs.hpp"
 #include "presto.hpp"
 
+#include <cuda_bf_16.h>
+
 namespace astroaccelerate {
 
   /**
@@ -150,11 +152,11 @@ namespace astroaccelerate {
 	  printf("ffdot length cpx pts = %u\n", params.ffdotlen_cpx);
 
 	//memory required
-	size_t mem_ffdot = params.ffdotlen * sizeof(float); // total size of ffdot plane powers in bytes
-	size_t mem_ffdot_cpx = params.ffdotlen_cpx * sizeof(float2); // total size of ffdot plane powers in bytes
-	size_t mem_kern_array = KERNLEN * NKERN * sizeof(float2);
-	size_t mem_max_list_size = params.max_list_length*4*sizeof(float);
-	size_t mem_signals = (params.nsamps * sizeof(float)) + (params.siglen * sizeof(float2)) + (params.extlen * sizeof(float2));
+	size_t mem_ffdot = params.ffdotlen * sizeof(__nv_bfloat16); // total size of ffdot plane powers in bytes
+	size_t mem_ffdot_cpx = params.ffdotlen_cpx * sizeof(__nv_bfloat162); // total size of ffdot plane powers in bytes
+	size_t mem_kern_array = KERNLEN * NKERN * sizeof(__nv_bfloat162);
+	size_t mem_max_list_size = params.max_list_length*4*sizeof(__nv_bfloat16);
+	size_t mem_signals = (params.nsamps * sizeof(__nv_bfloat16)) + (params.siglen * sizeof(__nv_bfloat162)) + (params.extlen * sizeof(__nv_bfloat162));
 
 	//Determining memory usage
 	size_t mem_tot_needed = 0;
@@ -176,9 +178,9 @@ namespace astroaccelerate {
 	printf( "Total memory for this device: %.2f GB\nAvailable memory on this device for data upload: %.2f GB \n", mtotal / gbyte, mfree / gbyte);
 
 	//Allocating gpu arrays
-	gpuarrays.mem_insig = params.nsamps * sizeof(float);
-	gpuarrays.mem_rfft = params.rfftlen * sizeof(float2);
-	gpuarrays.mem_extsig = params.extlen * sizeof(float2);
+	gpuarrays.mem_insig = params.nsamps * sizeof(__nv_bfloat16);
+	gpuarrays.mem_rfft = params.rfftlen * sizeof(__nv_bfloat162);
+	gpuarrays.mem_extsig = params.extlen * sizeof(__nv_bfloat162);
 	gpuarrays.mem_ffdot = mem_ffdot;
 	gpuarrays.mem_ffdot_cpx = mem_ffdot_cpx;
 	gpuarrays.mem_ipedge = params.nblocks * 2;
@@ -385,7 +387,7 @@ namespace astroaccelerate {
 	      t_gpu_i = (t_gpu / (double)iter);
 	      printf("\n\nConvolution using custom FFT:\nTotal process took: %f ms\n per iteration \nTotal time %d iterations: %f ms\n", t_gpu_i, iter, t_gpu);
 	    }
-#endif
+#endif /*
 	    // Calculating base level noise and peak find
 	    if(cmdargs.basic || cmdargs.kfft){
 	      //------------- Testing BLN
@@ -448,7 +450,7 @@ namespace astroaccelerate {
 		}
 	      cudaFree(d_MSD);
 	      cudaFree(gmem_fdas_peak_pos);
-	    }
+	    }*/
 	    if (enable_output_ffdot_plan)
 	      {
 		fdas_write_ffdot(&gpuarrays, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);

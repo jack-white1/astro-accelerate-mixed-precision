@@ -1037,14 +1037,14 @@ namespace astroaccelerate {
     cuda_overlap_copy_smallblk<<<blocks, KERNLEN>>>(d_ext_data, d_cpx_signal, sigblock, sig_rfftlen, sig_tot_convlen, kern_offset, total_blocks);
   }
 
-  __global__ void cuda_convolve_reg_1d_halftemps(float2* d_kernel, float2* d_signal, float2* d_ffdot_plane,int sig_tot_convlen, float scale)
+  __global__ void cuda_convolve_reg_1d_halftemps(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat162* d_ffdot_plane,int sig_tot_convlen, __nv_bfloat16 scale)
   {
     /* Load only half templates - use register arrays */
     int tx = threadIdx.x;
     int bx = blockIdx.x;
     int tidx = bx* blockDim.x + tx;
 
-    float2 tempkern[ZMAX/2]; // half template array, 1 column per thread
+    __nv_bfloat162 tempkern[ZMAX/2]; // half template array, 1 column per thread
     for (int i=0; i < ZMAX/2; i++ )
       tempkern[i] = __ldg(&d_kernel[i*KERNLEN + tidx]) ;
 
@@ -1071,7 +1071,7 @@ namespace astroaccelerate {
     cuda_convolve_reg_1d_halftemps<<<blocks, threads>>>(d_kernel, d_signal, d_ffdot_plane, sig_tot_convlen, scale);
   }
 
-  __global__ void cuda_ffdotpow_concat_2d(float2* d_ffdot_plane_cpx, float* d_ffdot_plane, int sigblock, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen)
+  __global__ void cuda_ffdotpow_concat_2d(__nv_bfloat162* d_ffdot_plane_cpx, __nv_bfloat16* d_ffdot_plane, int sigblock, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen)
   /* Copies useful points from convolved complex f-fdot array (discarding contaminated ends) */
   /* calculates complex signal power and places result in float f-fdot array */
   {
