@@ -32,14 +32,15 @@ GENCODE_SM60	:= -gencode arch=compute_60,code=sm_60 # Pascal
 GENCODE_SM61	:= -gencode arch=compute_61,code=sm_61 # Pascal
 GENCODE_SM70	:= -gencode arch=compute_70,code=sm_70 # Volta
 GENCODE_SM75    := -gencode arch=compute_75,code=sm_75 # Turing
-GENCODE_FLAGS   := $(GENCODE_SM61)
+GENCODE_SM86	:= -gencode arch=compute_86,code=sm_86 # Ampere
+GENCODE_FLAGS   := $(GENCODE_SM86)
 
 ifeq ($(cache),off)
         NVCCFLAGS := $(INC) ${INCLUDE} -g -lineinfo -Xcompiler -O3 -lm --use_fast_math\
-        --ptxas-options=-v -Xptxas -dlcm=cg $(GENCODE_FLAGS)
+        --ptxas-options=-v -Xptxas -dlcm=cg $(GENCODE_FLAGS) -Xcompiler -fopenmp
 else
         NVCCFLAGS := $(INC) ${INCLUDE} -g -lineinfo -Xcompiler -O3 -lm --use_fast_math\
-        --ptxas-options=-v -lcuda -lcudart  -lcurand -lcufft -lcudadevrt -Xptxas -dlcm=cg $(GENCODE_FLAGS)
+        --ptxas-options=-v -lcuda -lcudart  -lcurand -lcufft -lcudadevrt -Xptxas -dlcm=cg $(GENCODE_FLAGS) -Xcompiler -fopenmp
 endif
 
 LIBJOBS := libastroaccelerate.a
