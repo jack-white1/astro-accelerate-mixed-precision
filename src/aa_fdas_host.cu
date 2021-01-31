@@ -194,10 +194,10 @@ namespace astroaccelerate {
     //allocate kernel array and prepare fft
     h_kernel = (cufftComplex*) malloc(NKERN*KERNLEN*sizeof(float2));
 
-    // batched fft plan for the templates array
-    cufftPlanMany( &templates_plan, nrank, n, inembed , istride, 
-		   idist, onembed, ostride,
-		   odist, CUFFT_C2C, NKERN); 
+    // batched fft plan for the templates array, modified to bfloat16
+    size_t workSize = 0;
+    cufftXtMakePlanMany(&templates_plan, nrank, n, inembed, istride, idist, CUDA_C_16BF,
+        onembed, ostride, odist, CUDA_C_16BF, NKERN, &workSize, CUDA_C_16BF);
 
     for (ii = 0; ii < NKERN; ii++){
       double z = (-ZMAX+ii*ACCEL_STEP);
@@ -281,7 +281,9 @@ namespace astroaccelerate {
     int ridist = rn[0], rodist = params->rfftlen;
  
     cufftCreate(&fftplans->realplan);
-    e = cufftMakePlanMany( fftplans->realplan, nrank, rn, rinembed, istride, ridist, ronembed, ostride, rodist, CUFFT_R2C, 1, &rworksize);
+    e = cufftXtMakePlanMany(fftplans->realplan, nrank, rn, rinembed,
+        istride, ridist, CUDA_R_BF16,ronembed, ostride, rodist,
+        CUDA_C_BF16, 1, &rworkSize,CUDA_C_16BF);
 
     if(e != CUFFT_SUCCESS) {
       LOG(log_level::error, "Could not cufftMakePlanMany in aa_fdas_host.cu");
@@ -297,8 +299,8 @@ namespace astroaccelerate {
       LOG(log_level::error, "Could not cufftCreate in aa_fdas_host.cu");
     }
     
-    e = cufftMakePlanMany( fftplans->forwardplan, nrank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2C, params->nblocks, &sig_worksize);
-
+        e = cufftXtMakePlanMany(fftplans->forwardplan, nrank, n, inembed,istride, idist, CUDA_C_16BF,
+        onembed, ostride, odist,CUDA_C_16BF, params->nblocks, &sig_worksize,CUDA_C_16BF);
     if(e != CUFFT_SUCCESS) {
       LOG(log_level::error, "Could not cufftMakePlanMany in aa_fdas_host.cu");
     }
@@ -355,7 +357,7 @@ namespace astroaccelerate {
     free(f2temp);
 #endif
 
-    if (cmdargs->norm){
+    /*if (cmdargs->norm){
       //  PRESTO deredden - remove red noise.
       // TODO: replace with GPU version
       float2 *fftsig;
@@ -375,12 +377,12 @@ namespace astroaccelerate {
       }
       
       free(fftsig);
-    }
+    }*/
 
     //overlap-copy
     call_kernel_cuda_overlap_copy(gpuarrays->d_ext_data, gpuarrays->d_fft_signal, params->sigblock, params->rfftlen, params->extlen, params->offset, params->nblocks );
 
-    if (cmdargs->norm){
+    /*if (cmdargs->norm){
       //  PRESTO block median normalization
       // TODO: replace with GPU version
       float2 *extsig;
@@ -400,7 +402,7 @@ namespace astroaccelerate {
       }
       
       free(extsig);
-    }
+    }*/
 
     //complex block fft
     cufftExecC2C(fftplans->forwardplan, gpuarrays->d_ext_data, gpuarrays->d_ext_data, CUFFT_FORWARD);
@@ -417,12 +419,14 @@ namespace astroaccelerate {
     cufftExecC2C(fftplans->forwardplan, gpuarrays->d_ffdot_cpx + ((ZMAX/2) * params->extlen), gpuarrays->d_ffdot_cpx + ((ZMAX/2) * params->extlen), CUFFT_INVERSE);
 
     //power spectrum 
-    if (cmdargs->inbin){
+    /*if (cmdargs->inbin){
       call_kernel_cuda_ffdotpow_concat_2d_inbin(pwblocks, pwthreads, gpuarrays->d_ffdot_cpx, gpuarrays->d_ffdot_pwr, params->sigblock, params->offset, params->nblocks, params->extlen, params->siglen);
     }
     else{
       call_kernel_cuda_ffdotpow_concat_2d(pwblocks, pwthreads, gpuarrays->d_ffdot_cpx, gpuarrays->d_ffdot_pwr, params->sigblock, params->offset, params->nblocks, params->extlen, params->siglen);
-    }
+    }*/
+    call_kernel_cuda_ffdotpow_concat_2d(pwblocks, pwthreads, gpuarrays->d_ffdot_cpx, gpuarrays->d_ffdot_pwr, params->sigblock, params->offset, params->nblocks, params->extlen, params->siglen);
+
   }
 
 #ifndef NOCUST
@@ -486,7 +490,7 @@ namespace astroaccelerate {
     //overlap-copy
     call_kernel_cuda_overlap_copy_smallblk(params->nblocks, gpuarrays->d_ext_data, gpuarrays->d_fft_signal, params->sigblock, params->rfftlen, params->extlen, params->offset, params->nblocks );
 
-    if (cmdargs->norm){
+    /*if (cmdargs->norm){
       //  PRESTO block median normalization
       // TODO: replace with GPU version
       float2 *extsig;
@@ -506,7 +510,7 @@ namespace astroaccelerate {
       }
       
       free(extsig);
-    }
+    }*/
 
     // Custom FFT convolution kernel
     if(cmdargs->inbin){
