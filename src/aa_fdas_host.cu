@@ -490,7 +490,7 @@ namespace astroaccelerate {
     //overlap-copy
     call_kernel_cuda_overlap_copy_smallblk(params->nblocks, gpuarrays->d_ext_data, gpuarrays->d_fft_signal, params->sigblock, params->rfftlen, params->extlen, params->offset, params->nblocks );
 
-    /*if (cmdargs->norm){
+    if (cmdargs->norm){
       //  PRESTO block median normalization
       // TODO: replace with GPU version
       float2 *extsig;
@@ -510,7 +510,7 @@ namespace astroaccelerate {
       }
       
       free(extsig);
-    }*/
+    }
 
     // Custom FFT convolution kernel
     if(cmdargs->inbin){
