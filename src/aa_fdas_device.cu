@@ -3,6 +3,7 @@
 
 #include "aa_fdas_device.hpp"
 #include "aa_device_cuda_deprecated_wrappers.cuh"
+#include "cuda_bf16.h"
 
 namespace astroaccelerate {
 
@@ -988,7 +989,7 @@ namespace astroaccelerate {
 
   /* -------- FDAS KERNELS ----------*/
 
-  __global__ void cuda_overlap_copy(float2* d_ext_data, float2* d_cpx_signal, int sigblock, int sig_rfftlen, int sig_tot_convlen, int kern_offset, int total_blocks)
+  __global__ void cuda_overlap_copy(__nv_bfloat162* d_ext_data, __nv_bfloat162* d_cpx_signal, int sigblock, int sig_rfftlen, int sig_tot_convlen, int kern_offset, int total_blocks)
   {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int numthreads = blockDim.x * gridDim.x; 
@@ -1008,7 +1009,7 @@ namespace astroaccelerate {
 
   }
 
-  void call_kernel_cuda_overlap_copy(float2 *const d_ext_data, float2 *const d_cpx_signal, const int &sigblock, const int &sig_rfftlen, const int &sig_tot_convlen, const int &kern_offset, const int &total_blocks) {
+  void call_kernel_cuda_overlap_copy(__nv_bfloat162 *const d_ext_data, __nv_bfloat162 *const d_cpx_signal, const int &sigblock, const int &sig_rfftlen, const int &sig_tot_convlen, const int &kern_offset, const int &total_blocks) {
     cuda_overlap_copy<<<KERNLEN/64, 64 >>>(d_ext_data, d_cpx_signal, sigblock, sig_rfftlen, sig_tot_convlen, kern_offset, total_blocks);
   }
 
@@ -1049,7 +1050,7 @@ namespace astroaccelerate {
       tempkern[i] = __ldg(&d_kernel[i*KERNLEN + tidx]) ;
 
     for (int j = 0; j < sig_tot_convlen; j+=KERNLEN){
-      float2 local_data = __ldg(&d_signal[tidx + j]);
+      __nv_bfloat162 local_data = __ldg(&d_signal[tidx + j]);
 #pragma unroll
       for (int i = 0; i < ZMAX/2; i++){
 	//upper half
@@ -1061,13 +1062,13 @@ namespace astroaccelerate {
       }
 
       //do z=0
-      float2 tempz = __ldg(&d_kernel[(ZMAX/2)*KERNLEN + tidx]) ;
+      __nv_bfloat162 tempz = __ldg(&d_kernel[(ZMAX/2)*KERNLEN + tidx]) ;
       d_ffdot_plane[(ZMAX/2)*sig_tot_convlen + j + tidx ].x = (local_data.x*tempz.x - local_data.y*tempz.y) * scale;
       d_ffdot_plane[(ZMAX/2)*sig_tot_convlen + j + tidx ].y = (local_data.x*tempz.y + local_data.y*tempz.x) * scale;
     }
   }
 
-  void call_kernel_cuda_convolve_reg_1d_halftemps(const int &blocks, const int &threads, float2 *const d_kernel, float2 *const d_signal, float2 *const d_ffdot_plane, const int &sig_tot_convlen, const float &scale) {
+  void call_kernel_cuda_convolve_reg_1d_halftemps(const int &blocks, const int &threads, __nv_bfloat162 *const d_kernel, __nv_bfloat162 *const d_signal, __nv_bfloat162 *const d_ffdot_plane, const int &sig_tot_convlen, const float &scale) {
     cuda_convolve_reg_1d_halftemps<<<blocks, threads>>>(d_kernel, d_signal, d_ffdot_plane, sig_tot_convlen, scale);
   }
 
@@ -1084,13 +1085,13 @@ namespace astroaccelerate {
      
     for (int i = 0; i < total_blocks; ++i){
       if (tidx < sigblock){
-	float2  local_data =  __ldg(&d_ffdot_plane_cpx[(tidy * sig_tot_convlen) + i*KERNLEN  + tidx + kern_offset ]) ;
+	__nv_bfloat162  local_data =  __ldg(&d_ffdot_plane_cpx[(tidy * sig_tot_convlen) + i*KERNLEN  + tidx + kern_offset ]) ;
 	d_ffdot_plane[ (tidy * sig_totlen) + i*sigblock + tidx] = (local_data.x*local_data.x + local_data.y*local_data.y); 
       }
     }
   }
 
-  void call_kernel_cuda_ffdotpow_concat_2d(const dim3 &blocks, const dim3 &threads, float2 *const d_ffdot_plane_cpx, float *const d_ffdot_plane, const int &sigblock, const int &kern_offset, const int &total_blocks, const int &sig_tot_convlen, const int &sig_totlen) {
+  void call_kernel_cuda_ffdotpow_concat_2d(const dim3 &blocks, const dim3 &threads, __nv_bfloat162 *const d_ffdot_plane_cpx, __nv_bfloat16 *const d_ffdot_plane, const int &sigblock, const int &kern_offset, const int &total_blocks, const int &sig_tot_convlen, const int &sig_totlen) {
     cuda_ffdotpow_concat_2d<<<blocks, threads>>>(d_ffdot_plane_cpx, d_ffdot_plane, sigblock, kern_offset, total_blocks, sig_tot_convlen, sig_totlen);
   }
 

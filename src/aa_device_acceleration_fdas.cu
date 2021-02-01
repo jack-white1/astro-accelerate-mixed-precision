@@ -344,7 +344,7 @@ namespace astroaccelerate {
 #endif
 	    //!TEST!: put test signal here
 				
-	    e = cudaMemcpy(gpuarrays.d_in_signal, output_buffer[i][dm_count], processed*sizeof(float), cudaMemcpyHostToDevice);
+	    e = cudaMemcpy(gpuarrays.d_in_signal, output_buffer[i][dm_count], processed*sizeof(__nv_bfloat16), cudaMemcpyHostToDevice);
 
 	    if(e != cudaSuccess) {
 	      LOG(log_level::error, "Could not cudaMemcpy in aa_device_acceleration.cu (" + std::string(cudaGetErrorString(e)) + ")");

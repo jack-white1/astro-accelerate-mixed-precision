@@ -69,7 +69,7 @@ namespace astroaccelerate {
     }
 
     //templates
-    e = cudaMalloc((void**)&arrays->d_kernel, KERNLEN*sizeof(float2)*NKERN );
+    e = cudaMalloc((void**)&arrays->d_kernel, KERNLEN*sizeof(__nv_bfloat162)*NKERN );
 
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
@@ -89,7 +89,7 @@ namespace astroaccelerate {
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
-    printf("ffdot x size: %lu",(unsigned long)arrays->mem_ffdot/sizeof(float)/(unsigned long)NKERN);
+    printf("ffdot x size: %lu",(unsigned long)arrays->mem_ffdot/sizeof(__nv_bfloat16)/(unsigned long)NKERN);
     if(cmdargs->basic==1){
       e = cudaMalloc(&arrays->d_ffdot_cpx, arrays->mem_ffdot_cpx);
 
@@ -192,7 +192,7 @@ namespace astroaccelerate {
     int istride =1, ostride = 1;
 
     //allocate kernel array and prepare fft
-    h_kernel = (cufftComplex*) malloc(NKERN*KERNLEN*sizeof(float2));
+    h_kernel = (cufftComplex*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
 
     // batched fft plan for the templates array, modified to bfloat16
     size_t workSize = 0;
@@ -333,11 +333,11 @@ namespace astroaccelerate {
 #endif
   
 #ifdef FDAS_CONV_TEST
-    float2 *f2temp;
-    float *ftemp;
-    ftemp  = (float *)malloc(params->rfftlen*sizeof(float));
-    f2temp = (float2 *)malloc(params->rfftlen*sizeof(float2));
-    cudaError_t e = cudaMemcpy(ftemp, gpuarrays->d_in_signal, (params->rfftlen)*sizeof(float), cudaMemcpyDeviceToHost);
+    __nv_bfloat162 *f2temp;
+    __nv_bfloat16 *ftemp;
+    ftemp  = (__nv_bfloat16 *)malloc(params->rfftlen*sizeof(__nv_bfloat16));
+    f2temp = (__nv_bfloat162 *)malloc(params->rfftlen*sizeof(__nv_bfloat162));
+    cudaError_t e = cudaMemcpy(ftemp, gpuarrays->d_in_signal, (params->rfftlen)*sizeof(__nv_bfloat16), cudaMemcpyDeviceToHost);
 
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
