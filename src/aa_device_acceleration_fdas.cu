@@ -22,7 +22,7 @@
 #include "presto_funcs.hpp"
 #include "presto.hpp"
 
-#include <cuda_bf_16.h>
+#include <cuda_bf16.h>
 
 namespace astroaccelerate {
 

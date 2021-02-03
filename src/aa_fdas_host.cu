@@ -1,7 +1,9 @@
 #include <iostream>
+#include <cufftXt.h>
 
 #include "aa_fdas_host.hpp"
 #include "aa_log.hpp"
+#include "cuda_bf16.h"
 
 namespace astroaccelerate {
 
@@ -186,9 +188,9 @@ namespace astroaccelerate {
     cufftComplex *h_kernel, *tempkern;
     cufftHandle templates_plan; // for host kernel fft
     int nrank = 1;
-    int n[] = {KERNLEN};
+    long long int n[] = {KERNLEN};
     int idist = n[0], odist =n[0];
-    int *inembed = n, *onembed = n;
+    long long int *inembed = n, *onembed = n;
     int istride =1, ostride = 1;
 
     //allocate kernel array and prepare fft
@@ -196,7 +198,7 @@ namespace astroaccelerate {
 
     // batched fft plan for the templates array, modified to bfloat16
     size_t workSize = 0;
-    cufftXtMakePlanMany(&templates_plan, nrank, n, inembed, istride, idist, CUDA_C_16BF,
+    cufftXtMakePlanMany(templates_plan, nrank, n, inembed, istride, idist, CUDA_C_16BF,
         onembed, ostride, odist, CUDA_C_16BF, NKERN, &workSize, CUDA_C_16BF);
 
     for (ii = 0; ii < NKERN; ii++){
@@ -251,10 +253,10 @@ namespace astroaccelerate {
     //set cufft plan parameters
     size_t sig_worksize, real_worksize;
     int nrank = 1;
-    int n[] = {KERNLEN};
-    int idist = n[0], odist =n[0];
-    int *inembed = n, *onembed = n;
-    int istride =1, ostride = 1;
+    long long int n[] = {KERNLEN};
+    long long int idist = n[0], odist =n[0];
+    long long int *inembed = n, *onembed = n;
+    long long int istride =1, ostride = 1;
 
     //estimate plan memory for real fft
     cufftResult e = cufftEstimate1d( params->nsamps, CUFFT_R2C, 1, &real_worksize);
@@ -266,7 +268,7 @@ namespace astroaccelerate {
     printf("\nsignal real fft plan requires extra %f MB of memory\n", real_worksize / mbyte);
 
     //estimate plan memory for forward fft
-    e = cufftEstimateMany(nrank, n,inembed, istride, idist, onembed, ostride, odist, CUFFT_C2C, params->nblocks, &sig_worksize);
+    e = cufftEstimateMany(nrank, (int*) n, (int*) inembed, istride, idist, (int*) onembed, ostride, odist, CUFFT_C2C, params->nblocks, &sig_worksize);
 
     if(e != CUFFT_SUCCESS) {
       LOG(log_level::error, "Could not cudaEstimateMany in aa_fdas_host.cu");
@@ -276,14 +278,14 @@ namespace astroaccelerate {
   
     // real plan
     size_t rworksize;
-    int rn[] = {params->nsamps};
-    int *rinembed = rn, *ronembed = rn;
-    int ridist = rn[0], rodist = params->rfftlen;
+    long long int rn[] = {params->nsamps};
+    long long int *rinembed = rn, *ronembed = rn;
+    long long int ridist = rn[0], rodist = params->rfftlen;
  
     cufftCreate(&fftplans->realplan);
     e = cufftXtMakePlanMany(fftplans->realplan, nrank, rn, rinembed,
-        istride, ridist, CUDA_R_BF16,ronembed, ostride, rodist,
-        CUDA_C_BF16, 1, &rworkSize,CUDA_C_16BF);
+        istride, ridist, CUDA_R_16BF,ronembed, ostride, rodist,
+        CUDA_C_16BF, 1, &rworksize,CUDA_C_16BF);
 
     if(e != CUFFT_SUCCESS) {
       LOG(log_level::error, "Could not cufftMakePlanMany in aa_fdas_host.cu");

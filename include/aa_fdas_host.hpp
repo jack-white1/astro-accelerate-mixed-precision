@@ -2,9 +2,11 @@
 #define ASTRO_ACCELERATE_AA_FDAS_HOST_HPP
 
 #include <cufft.h>
+#include <cufftXt.h>
 #include "aa_fdas_device.hpp"
 #include "aa_fdas_util.hpp"
 #include "aa_params.hpp"
+#include "cuda_bf16.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,8 +50,8 @@ namespace astroaccelerate {
    */
   typedef struct{
     float* d_in_signal; 
-    float2* d_fft_signal;
-    float2  *d_ext_data;
+    __nv_bfloat162* d_fft_signal;
+    __nv_bfloat162  *d_ext_data;
     float2 *d_kernel;
     float *d_ffdot_pwr;
     float *d_ffdot_summed;

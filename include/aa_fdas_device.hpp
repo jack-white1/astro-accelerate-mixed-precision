@@ -6,6 +6,7 @@
 #include <cuda_runtime.h>
 #include "aa_fdas_device.hpp"
 #include "aa_params.hpp"
+#include "cuda_bf16.h"
 
 namespace astroaccelerate {
 
@@ -14,7 +15,7 @@ namespace astroaccelerate {
   __global__ void cuda_overlap_copy(float2* d_ext_data, float2* d_cpx_signal, int sigblock,  int sig_rfftlen, int sig_tot_convlen, int kern_offset, int total_blocks);
 
   /** \brief Kernel wrapper function for overlap_copy kernel function. */
-  void call_kernel_cuda_overlap_copy(float2 *const d_ext_data, float2 *const d_cpx_signal, const int &sigblock, const int &sig_rfftlen, const int &sig_tot_convlen, const int &kern_offset, const int &total_blocks);
+  void call_kernel_cuda_overlap_copy(__nv_bfloat162 *const d_ext_data, __nv_bfloat162 *const d_cpx_signal, const int &sigblock, const int &sig_rfftlen, const int &sig_tot_convlen, const int &kern_offset, const int &total_blocks);
   
   __global__ void cuda_overlap_copy_smallblk(float2* d_ext_data, float2* d_cpx_signal, int sigblock,  int sig_rfftlen, int sig_tot_convlen, int kern_offset, int total_blocks);
 
