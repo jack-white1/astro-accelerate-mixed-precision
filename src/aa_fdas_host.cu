@@ -182,10 +182,10 @@ namespace astroaccelerate {
    * \brief Using functions from the original PRESTO accelsearch code, (small adaptations for variables and remove normal interpolation management - input is already interpolated signal).
    * \author Scott Ransom.
    */
-  void fdas_create_acc_kernels(cufftComplex* d_kernel, cmd_args *cmdargs ) {
+  void fdas_create_acc_kernels(__nv_bfloat162* d_kernel, cmd_args *cmdargs ) {
     int ii;
     int inbin = 1;
-    cufftComplex *h_kernel, *tempkern;
+    __nv_bfloat162 *h_kernel, *tempkern;
     cufftHandle templates_plan; // for host kernel fft
     int nrank = 1;
     long long int n[] = {KERNLEN};
@@ -194,7 +194,7 @@ namespace astroaccelerate {
     int istride =1, ostride = 1;
 
     //allocate kernel array and prepare fft
-    h_kernel = (cufftComplex*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
+    h_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
 
     // batched fft plan for the templates array, modified to bfloat16
     size_t workSize = 0;
@@ -238,7 +238,7 @@ namespace astroaccelerate {
 #endif
     //use cuFFT to transform the templates
     if (cmdargs->basic)
-      cufftExecC2C(templates_plan, d_kernel, d_kernel, CUFFT_FORWARD); 
+      cufftXtExec(templates_plan, d_kernel, d_kernel, CUFFT_FORWARD); 
 
     free(h_kernel);
 
@@ -331,7 +331,7 @@ namespace astroaccelerate {
     */
     //real fft
 #ifndef FDAS_CONV_TEST
-    cufftExecR2C(fftplans->realplan, gpuarrays->d_in_signal, gpuarrays->d_fft_signal);
+    cufftXtExec(fftplans->realplan, gpuarrays->d_in_signal, gpuarrays->d_fft_signal,CUFFT_FORWARD);
 #endif
   
 #ifdef FDAS_CONV_TEST
@@ -407,18 +407,18 @@ namespace astroaccelerate {
     }*/
 
     //complex block fft
-    cufftExecC2C(fftplans->forwardplan, gpuarrays->d_ext_data, gpuarrays->d_ext_data, CUFFT_FORWARD);
+    cufftXtExec(fftplans->forwardplan,  gpuarrays->d_ext_data,  gpuarrays->d_ext_data, CUFFT_FORWARD);
 
     //complex multiplication kernel
     call_kernel_cuda_convolve_reg_1d_halftemps(cblocks, cthreads, gpuarrays->d_kernel, gpuarrays->d_ext_data, gpuarrays->d_ffdot_cpx, params->extlen, params->scale);
 
     //inverse fft
     for (int k=0; k < ZMAX/2; k++){
-      cufftExecC2C(fftplans->forwardplan, gpuarrays->d_ffdot_cpx + k * params->extlen, gpuarrays->d_ffdot_cpx + k *params->extlen, CUFFT_INVERSE);
-      cufftExecC2C(fftplans->forwardplan, gpuarrays->d_ffdot_cpx + (ZMAX-k) * params->extlen, gpuarrays->d_ffdot_cpx + (ZMAX-k) *params->extlen, CUFFT_INVERSE);
+      cufftXtExec(fftplans->forwardplan, (gpuarrays->d_ffdot_cpx + k * params->extlen), (gpuarrays->d_ffdot_cpx + k *params->extlen), CUFFT_INVERSE);
+      cufftXtExec(fftplans->forwardplan, (gpuarrays->d_ffdot_cpx + (ZMAX-k) * params->extlen), (gpuarrays->d_ffdot_cpx + (ZMAX-k) *params->extlen), CUFFT_INVERSE);
     }
     // z=0
-    cufftExecC2C(fftplans->forwardplan, gpuarrays->d_ffdot_cpx + ((ZMAX/2) * params->extlen), gpuarrays->d_ffdot_cpx + ((ZMAX/2) * params->extlen), CUFFT_INVERSE);
+    cufftXtExec(fftplans->forwardplan, gpuarrays->d_ffdot_cpx + ((ZMAX/2) * params->extlen), gpuarrays->d_ffdot_cpx + ((ZMAX/2) * params->extlen), CUFFT_INVERSE);
 
     //power spectrum 
     /*if (cmdargs->inbin){
@@ -438,7 +438,7 @@ namespace astroaccelerate {
 
     //real fft
 #ifndef FDAS_CONV_TEST
-    cufftExecR2C(fftplans->realplan, gpuarrays->d_in_signal, gpuarrays->d_fft_signal);
+    cufftXtExec(fftplans->realplan, gpuarrays->d_in_signal, gpuarrays->d_fft_signal, CUFFT_FORWARD);
 #endif
 
 #ifdef FDAS_CONV_TEST

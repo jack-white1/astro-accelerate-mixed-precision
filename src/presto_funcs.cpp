@@ -12,6 +12,7 @@
 #include "presto_funcs.hpp"
 #include "aa_jerk_plan.hpp"
 #include "aa_jerk_strategy.hpp"
+#include "cuda_bf16.h"
 
 namespace astroaccelerate {
 
@@ -411,6 +412,33 @@ cufftComplex *presto_gen_w_response(double roffset, int numbetween, double z, do
 }
 
 void presto_place_complex_kernel(cufftComplex * kernel, int numkernel, cufftComplex * result, int numresult)
+  /* This routine places the kernel in a zero filled array */
+  /* with half of the response at the beginning and half   */
+  /* of the response at the end of the result array.  See  */
+  /* Numerical Recipes in C 2ed, p 541 for more info.      */
+  /* Arguments:                                            */
+  /*   'kernel' is a complex response function.  Bin zero  */
+  /*      response is in bin numkernel/2.                  */
+  /*   'numkernel' is the number of points in the kernel.  */
+  /*      This should be an even number.                   */
+  /*   'result' is the result array.                       */
+  /*   'numresult' is the number of points in the result.  */
+  {
+    int ii, halfwidth;
+    cufftComplex zeros;
+    zeros.x = zeros.y = 0.0;
+  
+    halfwidth = numkernel / 2;
+  
+    for (ii = 0; ii < numresult; ii++){
+      result[ii] = zeros;
+    }
+
+    memcpy(result, kernel + halfwidth, sizeof(cufftComplex) * halfwidth);
+    memcpy(result + numresult - halfwidth, kernel, sizeof(cufftComplex) * halfwidth);
+  }
+
+  void presto_place_bfloat_complex_kernel(cufftComplex * kernel, int numkernel, cufftComplex * result, int numresult)
   /* This routine places the kernel in a zero filled array */
   /* with half of the response at the beginning and half   */
   /* of the response at the end of the result array.  See  */

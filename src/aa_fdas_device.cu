@@ -7,24 +7,24 @@
 
 namespace astroaccelerate {
 
-  static __device__ __inline__ float2 Get_W_value(int N, int m){
-    float2 ctemp;
+  static __device__ __inline__ __nv_bfloat162 Get_W_value(int N, int m){
+    __nv_bfloat162 ctemp;
     ctemp.x=cosf( -2.0f*3.141592654f*fdividef( (float) m, (float) N) );
     ctemp.y=sinf( -2.0f*3.141592654f*fdividef( (float) m, (float) N) );	
     return(ctemp);
   }
 
-  static __device__ __inline__ float2 Get_W_value_inverse(int N, int m){
-    float2 ctemp;
+  static __device__ __inline__ __nv_bfloat162 Get_W_value_inverse(int N, int m){
+    __nv_bfloat162 ctemp;
     ctemp.x=cosf(2.0f*3.141592654f*fdividef( (float)(m), (float)(N)) );
     ctemp.y=sinf( 2.0f*3.141592654f*fdividef( (float)(m), (float)(N)) );
     return(ctemp);
   }
 
   /** \brief Forward no reorder FFTs. */
-  static __device__ __inline__ void do_FFT_no_reorder(float2 *s_input, int N, int bits){ // in-place
-    float2 A_DFT_value, B_DFT_value, ftemp2, ftemp;
-    float2 WB;
+  static __device__ __inline__ void do_FFT_no_reorder(__nv_bfloat162 *s_input, int N, int bits){ // in-place
+    __nv_bfloat162 A_DFT_value, B_DFT_value, ftemp2, ftemp;
+    __nv_bfloat162 WB;
 	
     int r, Bj, Bk, PoTm1, A_read_index, B_read_index, A_write_index, B_write_index, Nhalf;
 
@@ -93,10 +93,10 @@ namespace astroaccelerate {
     //-------> END
   }
 
-  static __device__ __inline__ void do_FFT_CT_DIF_2elem_no_reorder(float2 *s_input){
-    float2 A_DFT_value, B_DFT_value;
-    float2 W;
-    float2 Aftemp, Bftemp;
+  static __device__ __inline__ void do_FFT_CT_DIF_2elem_no_reorder(__nv_bfloat162 *s_input){
+    __nv_bfloat162 A_DFT_value, B_DFT_value;
+    __nv_bfloat162 W;
+    __nv_bfloat162 Aftemp, Bftemp;
 
     int local_id, warp_id;
     int j, m_param, parity;
@@ -148,10 +148,10 @@ namespace astroaccelerate {
       parity=(1-j*2);
       W = Get_W_value(PoT, j*(m_param-PoTm1));
 		
-      Aftemp.x = parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x, PoTm1);
-      Aftemp.y = parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y, PoTm1);
-      Bftemp.x = parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x, PoTm1);
-      Bftemp.y = parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y, PoTm1);
+      Aftemp.x = (__nv_bfloat16)parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x, PoTm1);
+      Aftemp.y = (__nv_bfloat16)parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y, PoTm1);
+      Bftemp.x = (__nv_bfloat16)parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x, PoTm1);
+      Bftemp.y = (__nv_bfloat16)parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y, PoTm1);
 		
       A_DFT_value.x = W.x*Aftemp.x - W.y*Aftemp.y; 
       A_DFT_value.y = W.x*Aftemp.y + W.y*Aftemp.x;
@@ -168,10 +168,10 @@ namespace astroaccelerate {
     __syncthreads();
   }
 
-  static __device__ __inline__ void do_FFT_CT_DIF_4elem_no_reorder(float2 *s_input){
-    float2 A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value;
-    float2 W;
-    float2 Aftemp, Bftemp, Cftemp, Dftemp;
+  static __device__ __inline__ void do_FFT_CT_DIF_4elem_no_reorder(__nv_bfloat162 *s_input){
+    __nv_bfloat162 A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value;
+    __nv_bfloat162 W;
+    __nv_bfloat162 Aftemp, Bftemp, Cftemp, Dftemp;
 
     int local_id, warp_id;
     int j, m_param, parity;
@@ -269,14 +269,14 @@ namespace astroaccelerate {
       parity=(1-j*2);
       W = Get_W_value(PoT, j*(m_param-PoTm1));
 		
-      Aftemp.x = parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x, PoTm1);
-      Aftemp.y = parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y, PoTm1);
-      Bftemp.x = parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x, PoTm1);
-      Bftemp.y = parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y, PoTm1);
-      Cftemp.x = parity*C_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.x, PoTm1);
-      Cftemp.y = parity*C_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.y, PoTm1);
-      Dftemp.x = parity*D_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.x, PoTm1);
-      Dftemp.y = parity*D_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.y, PoTm1);
+      Aftemp.x = (__nv_bfloat16)parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x, PoTm1);
+      Aftemp.y = (__nv_bfloat16)parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y, PoTm1);
+      Bftemp.x = (__nv_bfloat16)parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x, PoTm1);
+      Bftemp.y = (__nv_bfloat16)parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y, PoTm1);
+      Cftemp.x = (__nv_bfloat16)parity*C_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.x, PoTm1);
+      Cftemp.y = (__nv_bfloat16)parity*C_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.y, PoTm1);
+      Dftemp.x = (__nv_bfloat16)parity*D_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.x, PoTm1);
+      Dftemp.y = (__nv_bfloat16)parity*D_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.y, PoTm1);
 		
       A_DFT_value.x = W.x*Aftemp.x - W.y*Aftemp.y; 
       A_DFT_value.y = W.x*Aftemp.y + W.y*Aftemp.x;
@@ -304,10 +304,10 @@ namespace astroaccelerate {
 
   //----------------- Inverse no reorder FFTs
 
-  static __device__ __inline__ void do_IFFT_no_reorder(float2 *s_input, int N, int bits){ // in-place
-    float2 A_DFT_value, B_DFT_value;
-    float2 W;
-    float2 ftemp, ftemp2;
+  static __device__ __inline__ void do_IFFT_no_reorder(__nv_bfloat162 *s_input, int N, int bits){ // in-place
+    __nv_bfloat162 A_DFT_value, B_DFT_value;
+    __nv_bfloat162 W;
+    __nv_bfloat162 ftemp, ftemp2;
 
     int local_id, warp_id;
     int j, m_param;
@@ -333,11 +333,11 @@ namespace astroaccelerate {
       A_DFT_value=s_input[local_id + warp_id*2*WARP];
       B_DFT_value=s_input[local_id + warp_id*2*WARP + WARP];
 		
-      A_DFT_value.x=parity*A_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.x,local_id+parity);
-      A_DFT_value.y=parity*A_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.y,local_id+parity);
+      A_DFT_value.x=(__nv_bfloat16)parity*A_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.x,local_id+parity);
+      A_DFT_value.y=(__nv_bfloat16)parity*A_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.y,local_id+parity);
 		
-      B_DFT_value.x=parity*B_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.x,local_id+parity);
-      B_DFT_value.y=parity*B_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.y,local_id+parity);
+      B_DFT_value.x=(__nv_bfloat16)parity*B_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.x,local_id+parity);
+      B_DFT_value.y=(__nv_bfloat16)parity*B_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.y,local_id+parity);
 		
       //--> First iteration
 		
@@ -407,12 +407,12 @@ namespace astroaccelerate {
     }
   }
 
-  static __device__ __inline__ void do_IFFT_mk11_2elem_2vertical_no_reorder(float2 *s_input_1, float2 *s_input_2){
-    float2 A_DFT_value1, B_DFT_value1;
-    float2 A_DFT_value2, B_DFT_value2;
-    float2 W;
-    float2 Aftemp1, Bftemp1;
-    float2 Aftemp2, Bftemp2;
+  static __device__ __inline__ void do_IFFT_mk11_2elem_2vertical_no_reorder(__nv_bfloat162 *s_input_1, __nv_bfloat162 *s_input_2){
+    __nv_bfloat162 A_DFT_value1, B_DFT_value1;
+    __nv_bfloat162 A_DFT_value2, B_DFT_value2;
+    __nv_bfloat162 W;
+    __nv_bfloat162 Aftemp1, Bftemp1;
+    __nv_bfloat162 Aftemp2, Bftemp2;
 
     int local_id, warp_id;
     int j, m_param;
@@ -438,15 +438,15 @@ namespace astroaccelerate {
 	
     __syncthreads();
 	
-    A_DFT_value1.x=parity*A_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.x,1);
-    A_DFT_value1.y=parity*A_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.y,1);
-    B_DFT_value1.x=parity*B_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.x,1);
-    B_DFT_value1.y=parity*B_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.y,1);
+    A_DFT_value1.x=(__nv_bfloat16)parity*A_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.x,1);
+    A_DFT_value1.y=(__nv_bfloat16)parity*A_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.y,1);
+    B_DFT_value1.x=(__nv_bfloat16)parity*B_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.x,1);
+    B_DFT_value1.y=(__nv_bfloat16)parity*B_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.y,1);
 	
-    A_DFT_value2.x=parity*A_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.x,1);
-    A_DFT_value2.y=parity*A_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.y,1);
-    B_DFT_value2.x=parity*B_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.x,1);
-    B_DFT_value2.y=parity*B_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.y,1);
+    A_DFT_value2.x=(__nv_bfloat16)parity*A_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.x,1);
+    A_DFT_value2.y=(__nv_bfloat16)parity*A_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.y,1);
+    B_DFT_value2.x=(__nv_bfloat16)parity*B_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.x,1);
+    B_DFT_value2.y=(__nv_bfloat16)parity*B_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.y,1);
 	
 	
     //--> Second through Fifth iteration (no synchronization)
@@ -468,15 +468,15 @@ namespace astroaccelerate {
       Bftemp2.x = W.x*B_DFT_value2.x - W.y*B_DFT_value2.y;
       Bftemp2.y = W.x*B_DFT_value2.y + W.y*B_DFT_value2.x;
 		
-      A_DFT_value1.x = Aftemp1.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.x,PoT);
-      A_DFT_value1.y = Aftemp1.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.y,PoT);
-      B_DFT_value1.x = Bftemp1.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.x,PoT);
-      B_DFT_value1.y = Bftemp1.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.y,PoT);
+      A_DFT_value1.x = Aftemp1.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.x,PoT);
+      A_DFT_value1.y = Aftemp1.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.y,PoT);
+      B_DFT_value1.x = Bftemp1.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.x,PoT);
+      B_DFT_value1.y = Bftemp1.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.y,PoT);
 		
-      A_DFT_value2.x = Aftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.x,PoT);
-      A_DFT_value2.y = Aftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.y,PoT);
-      B_DFT_value2.x = Bftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.x,PoT);
-      B_DFT_value2.y = Bftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.y,PoT);	
+      A_DFT_value2.x = Aftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.x,PoT);
+      A_DFT_value2.y = Aftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.y,PoT);
+      B_DFT_value2.x = Bftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.x,PoT);
+      B_DFT_value2.y = Bftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.y,PoT);	
 		
       PoT=PoT<<1;
       PoTp1=PoTp1<<1;
@@ -524,10 +524,10 @@ namespace astroaccelerate {
     __syncthreads();
   }
 
-  static __device__ __inline__ void do_IFFT_mk11_2elem_no_reorder(float2 *s_input){
-    float2 A_DFT_value, B_DFT_value;
-    float2 W;
-    float2 ftemp, ftemp2;
+  static __device__ __inline__ void do_IFFT_mk11_2elem_no_reorder(__nv_bfloat162 *s_input){
+    __nv_bfloat162 A_DFT_value, B_DFT_value;
+    __nv_bfloat162 W;
+    __nv_bfloat162 ftemp, ftemp2;
 
     int local_id, warp_id;
     int j, m_param;
@@ -551,11 +551,11 @@ namespace astroaccelerate {
 	
     __syncthreads();
 	
-    A_DFT_value.x=parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x,1);
-    A_DFT_value.y=parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y,1);
+    A_DFT_value.x=(__nv_bfloat16)parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x,1);
+    A_DFT_value.y=(__nv_bfloat16)parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y,1);
 	
-    B_DFT_value.x=parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x,1);
-    B_DFT_value.y=parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y,1);
+    B_DFT_value.x=(__nv_bfloat16)parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x,1);
+    B_DFT_value.y=(__nv_bfloat16)parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y,1);
 	
 	
     //--> Second through Fifth iteration (no synchronization)
@@ -572,10 +572,10 @@ namespace astroaccelerate {
       ftemp.x = W.x*B_DFT_value.x - W.y*B_DFT_value.y;
       ftemp.y = W.x*B_DFT_value.y + W.y*B_DFT_value.x;
 		
-      A_DFT_value.x = ftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp2.x,PoT);
-      A_DFT_value.y = ftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp2.y,PoT);
-      B_DFT_value.x = ftemp.x + parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp.x,PoT);
-      B_DFT_value.y = ftemp.y + parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp.y,PoT);
+      A_DFT_value.x = ftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp2.x,PoT);
+      A_DFT_value.y = ftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp2.y,PoT);
+      B_DFT_value.x = ftemp.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp.x,PoT);
+      B_DFT_value.y = ftemp.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,ftemp.y,PoT);
 		
       PoT=PoT<<1;
       PoTp1=PoTp1<<1;
@@ -613,10 +613,10 @@ namespace astroaccelerate {
     __syncthreads();
   }
 
-  static __device__ __inline__ void do_IFFT_mk11_4elem_no_reorder(float2 *s_input){
-    float2 A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value;
-    float2 W;
-    float2 Aftemp, Bftemp, Cftemp, Dftemp;
+  static __device__ __inline__ void do_IFFT_mk11_4elem_no_reorder(__nv_bfloat162 *s_input){
+    __nv_bfloat162 A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value;
+    __nv_bfloat162 W;
+    __nv_bfloat162 Aftemp, Bftemp, Cftemp, Dftemp;
 
     int local_id, warp_id;
     int j, m_param;
@@ -642,14 +642,14 @@ namespace astroaccelerate {
 	
     __syncthreads();
 	
-    A_DFT_value.x=parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x,1);
-    A_DFT_value.y=parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y,1);
-    B_DFT_value.x=parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x,1);
-    B_DFT_value.y=parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y,1);
-    C_DFT_value.x=parity*C_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.x,1);
-    C_DFT_value.y=parity*C_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.y,1);
-    D_DFT_value.x=parity*D_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.x,1);
-    D_DFT_value.y=parity*D_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.y,1);
+    A_DFT_value.x=(__nv_bfloat16)parity*A_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.x,1);
+    A_DFT_value.y=(__nv_bfloat16)parity*A_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value.y,1);
+    B_DFT_value.x=(__nv_bfloat16)parity*B_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.x,1);
+    B_DFT_value.y=(__nv_bfloat16)parity*B_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value.y,1);
+    C_DFT_value.x=(__nv_bfloat16)parity*C_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.x,1);
+    C_DFT_value.y=(__nv_bfloat16)parity*C_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value.y,1);
+    D_DFT_value.x=(__nv_bfloat16)parity*D_DFT_value.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.x,1);
+    D_DFT_value.y=(__nv_bfloat16)parity*D_DFT_value.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value.y,1);
 	
 	
     //--> Second through Fifth iteration (no synchronization)
@@ -670,14 +670,14 @@ namespace astroaccelerate {
       Dftemp.x = W.x*D_DFT_value.x - W.y*D_DFT_value.y;
       Dftemp.y = W.x*D_DFT_value.y + W.y*D_DFT_value.x;
 		
-      A_DFT_value.x = Aftemp.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp.x,PoT);
-      A_DFT_value.y = Aftemp.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp.y,PoT);
-      B_DFT_value.x = Bftemp.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp.x,PoT);
-      B_DFT_value.y = Bftemp.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp.y,PoT);
-      C_DFT_value.x = Cftemp.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp.x,PoT);
-      C_DFT_value.y = Cftemp.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp.y,PoT);
-      D_DFT_value.x = Dftemp.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp.x,PoT);
-      D_DFT_value.y = Dftemp.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp.y,PoT);	
+      A_DFT_value.x = Aftemp.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp.x,PoT);
+      A_DFT_value.y = Aftemp.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp.y,PoT);
+      B_DFT_value.x = Bftemp.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp.x,PoT);
+      B_DFT_value.y = Bftemp.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp.y,PoT);
+      C_DFT_value.x = Cftemp.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp.x,PoT);
+      C_DFT_value.y = Cftemp.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp.y,PoT);
+      D_DFT_value.x = Dftemp.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp.x,PoT);
+      D_DFT_value.y = Dftemp.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp.y,PoT);	
 		
       PoT=PoT<<1;
       PoTp1=PoTp1<<1;
@@ -757,12 +757,12 @@ namespace astroaccelerate {
     __syncthreads();	
   }
 
-  static __device__ __inline__ void do_IFFT_mk11_4elem_2vertical_no_reorder(float2 *s_input1, float2 *s_input2){
-    float2 A_DFT_value1, B_DFT_value1, C_DFT_value1, D_DFT_value1;
-    float2 A_DFT_value2, B_DFT_value2, C_DFT_value2, D_DFT_value2;
-    float2 W;
-    float2 Aftemp1, Bftemp1, Cftemp1, Dftemp1;
-    float2 Aftemp2, Bftemp2, Cftemp2, Dftemp2;
+  static __device__ __inline__ void do_IFFT_mk11_4elem_2vertical_no_reorder(__nv_bfloat162 *s_input1, __nv_bfloat162 *s_input2){
+    __nv_bfloat162 A_DFT_value1, B_DFT_value1, C_DFT_value1, D_DFT_value1;
+    __nv_bfloat162 A_DFT_value2, B_DFT_value2, C_DFT_value2, D_DFT_value2;
+    __nv_bfloat162 W;
+    __nv_bfloat162 Aftemp1, Bftemp1, Cftemp1, Dftemp1;
+    __nv_bfloat162 Aftemp2, Bftemp2, Cftemp2, Dftemp2;
 
     int local_id, warp_id;
     int j, m_param;
@@ -792,23 +792,23 @@ namespace astroaccelerate {
 	
     __syncthreads();
 	
-    A_DFT_value1.x=parity*A_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.x,1);
-    A_DFT_value1.y=parity*A_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.y,1);
-    B_DFT_value1.x=parity*B_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.x,1);
-    B_DFT_value1.y=parity*B_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.y,1);
-    C_DFT_value1.x=parity*C_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value1.x,1);
-    C_DFT_value1.y=parity*C_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value1.y,1);
-    D_DFT_value1.x=parity*D_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value1.x,1);
-    D_DFT_value1.y=parity*D_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value1.y,1);
+    A_DFT_value1.x=(__nv_bfloat16)parity*A_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.x,1);
+    A_DFT_value1.y=(__nv_bfloat16)parity*A_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value1.y,1);
+    B_DFT_value1.x=(__nv_bfloat16)parity*B_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.x,1);
+    B_DFT_value1.y=(__nv_bfloat16)parity*B_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value1.y,1);
+    C_DFT_value1.x=(__nv_bfloat16)parity*C_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value1.x,1);
+    C_DFT_value1.y=(__nv_bfloat16)parity*C_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value1.y,1);
+    D_DFT_value1.x=(__nv_bfloat16)parity*D_DFT_value1.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value1.x,1);
+    D_DFT_value1.y=(__nv_bfloat16)parity*D_DFT_value1.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value1.y,1);
 	
-    A_DFT_value2.x=parity*A_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.x,1);
-    A_DFT_value2.y=parity*A_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.y,1);
-    B_DFT_value2.x=parity*B_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.x,1);
-    B_DFT_value2.y=parity*B_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.y,1);
-    C_DFT_value2.x=parity*C_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value2.x,1);
-    C_DFT_value2.y=parity*C_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value2.y,1);
-    D_DFT_value2.x=parity*D_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value2.x,1);
-    D_DFT_value2.y=parity*D_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value2.y,1);
+    A_DFT_value2.x=(__nv_bfloat16)parity*A_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.x,1);
+    A_DFT_value2.y=(__nv_bfloat16)parity*A_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,A_DFT_value2.y,1);
+    B_DFT_value2.x=(__nv_bfloat16)parity*B_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.x,1);
+    B_DFT_value2.y=(__nv_bfloat16)parity*B_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,B_DFT_value2.y,1);
+    C_DFT_value2.x=(__nv_bfloat16)parity*C_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value2.x,1);
+    C_DFT_value2.y=(__nv_bfloat16)parity*C_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,C_DFT_value2.y,1);
+    D_DFT_value2.x=(__nv_bfloat16)parity*D_DFT_value2.x + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value2.x,1);
+    D_DFT_value2.y=(__nv_bfloat16)parity*D_DFT_value2.y + aa_shfl_xor(AA_ASSUME_MASK,D_DFT_value2.y,1);
 	
 	
     //--> Second through Fifth iteration (no synchronization)
@@ -838,23 +838,23 @@ namespace astroaccelerate {
       Dftemp2.x = W.x*D_DFT_value2.x - W.y*D_DFT_value2.y;
       Dftemp2.y = W.x*D_DFT_value2.y + W.y*D_DFT_value2.x;
 		
-      A_DFT_value1.x = Aftemp1.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.x,PoT);
-      A_DFT_value1.y = Aftemp1.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.y,PoT);
-      B_DFT_value1.x = Bftemp1.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.x,PoT);
-      B_DFT_value1.y = Bftemp1.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.y,PoT);
-      C_DFT_value1.x = Cftemp1.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp1.x,PoT);
-      C_DFT_value1.y = Cftemp1.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp1.y,PoT);
-      D_DFT_value1.x = Dftemp1.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp1.x,PoT);
-      D_DFT_value1.y = Dftemp1.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp1.y,PoT);
+      A_DFT_value1.x = Aftemp1.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.x,PoT);
+      A_DFT_value1.y = Aftemp1.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp1.y,PoT);
+      B_DFT_value1.x = Bftemp1.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.x,PoT);
+      B_DFT_value1.y = Bftemp1.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp1.y,PoT);
+      C_DFT_value1.x = Cftemp1.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp1.x,PoT);
+      C_DFT_value1.y = Cftemp1.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp1.y,PoT);
+      D_DFT_value1.x = Dftemp1.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp1.x,PoT);
+      D_DFT_value1.y = Dftemp1.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp1.y,PoT);
 		
-      A_DFT_value2.x = Aftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.x,PoT);
-      A_DFT_value2.y = Aftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.y,PoT);
-      B_DFT_value2.x = Bftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.x,PoT);
-      B_DFT_value2.y = Bftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.y,PoT);
-      C_DFT_value2.x = Cftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp2.x,PoT);
-      C_DFT_value2.y = Cftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp2.y,PoT);
-      D_DFT_value2.x = Dftemp2.x + parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp2.x,PoT);
-      D_DFT_value2.y = Dftemp2.y + parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp2.y,PoT);	
+      A_DFT_value2.x = Aftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.x,PoT);
+      A_DFT_value2.y = Aftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Aftemp2.y,PoT);
+      B_DFT_value2.x = Bftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.x,PoT);
+      B_DFT_value2.y = Bftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Bftemp2.y,PoT);
+      C_DFT_value2.x = Cftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp2.x,PoT);
+      C_DFT_value2.y = Cftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Cftemp2.y,PoT);
+      D_DFT_value2.x = Dftemp2.x + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp2.x,PoT);
+      D_DFT_value2.y = Dftemp2.y + (__nv_bfloat16)parity*aa_shfl_xor(AA_ASSUME_MASK,Dftemp2.y,PoT);	
 		
       PoT=PoT<<1;
       PoTp1=PoTp1<<1;
@@ -980,9 +980,9 @@ namespace astroaccelerate {
 
   /* ----------------------------------- */
 
-  static __device__ inline float pwcalc(float2 cpx)
+  static __device__ inline __nv_bfloat16 pwcalc(__nv_bfloat162 cpx)
   {
-    float pw = (cpx.x*cpx.x + cpx.y*cpx.y);
+    __nv_bfloat16 pw = (cpx.x*cpx.x + cpx.y*cpx.y);
     return pw;
 
   }
@@ -1013,7 +1013,7 @@ namespace astroaccelerate {
     cuda_overlap_copy<<<KERNLEN/64, 64 >>>(d_ext_data, d_cpx_signal, sigblock, sig_rfftlen, sig_tot_convlen, kern_offset, total_blocks);
   }
 
-  __global__ void cuda_overlap_copy_smallblk(float2* d_ext_data, float2* d_cpx_signal, int sigblock, int sig_rfftlen, int sig_tot_convlen, int kern_offset, int total_blocks)
+  __global__ void cuda_overlap_copy_smallblk(__nv_bfloat162* d_ext_data, __nv_bfloat162* d_cpx_signal, int sigblock, int sig_rfftlen, int sig_tot_convlen, int kern_offset, int total_blocks)
   {
     int tid = blockIdx.x*blockDim.x + threadIdx.x;
     int read_idx = blockIdx.x*sigblock - kern_offset + threadIdx.x;
@@ -1034,7 +1034,7 @@ namespace astroaccelerate {
     }
   }
 
-  void call_kernel_cuda_overlap_copy_smallblk(const int &blocks, float2 *const d_ext_data, float2 *const d_cpx_signal, const int &sigblock, const int &sig_rfftlen, const int &sig_tot_convlen, const int &kern_offset, const int &total_blocks) {
+  void call_kernel_cuda_overlap_copy_smallblk(const int &blocks, __nv_bfloat162 *const d_ext_data, __nv_bfloat162 *const d_cpx_signal, const int &sigblock, const int &sig_rfftlen, const int &sig_tot_convlen, const int &kern_offset, const int &total_blocks) {
     cuda_overlap_copy_smallblk<<<blocks, KERNLEN>>>(d_ext_data, d_cpx_signal, sigblock, sig_rfftlen, sig_tot_convlen, kern_offset, total_blocks);
   }
 
@@ -1095,7 +1095,7 @@ namespace astroaccelerate {
     cuda_ffdotpow_concat_2d<<<blocks, threads>>>(d_ffdot_plane_cpx, d_ffdot_plane, sigblock, kern_offset, total_blocks, sig_tot_convlen, sig_totlen);
   }
 
-  __global__ void cuda_ffdotpow_concat_2d_inbin(float2* d_ffdot_plane_cpx, float* d_ffdot_plane, int sigblock, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen)
+  __global__ void cuda_ffdotpow_concat_2d_inbin(__nv_bfloat162* d_ffdot_plane_cpx, __nv_bfloat16* d_ffdot_plane, int sigblock, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen)
   /* Copies useful points from convolved complex f-fdot array (discarding contaminated ends) */
   /* calculates complex signal power and places result in float f-fdot array */
   /* This one performs interbinning on the complex signal before power calculations */
@@ -1105,8 +1105,8 @@ namespace astroaccelerate {
     int by = blockIdx.y;
     int tidx = bx* blockDim.x + tx;
 
-    __shared__ float2 local_data[PTBSIZEX + 1];
-    __shared__ float local_data_inbin[2*PTBSIZEX];
+    __shared__ __nv_bfloat162 local_data[PTBSIZEX + 1];
+    __shared__ __nv_bfloat16 local_data_inbin[2*PTBSIZEX];
  
     for (int i = 0; i < total_blocks; ++i){
       //     __syncthreads();
@@ -1135,7 +1135,7 @@ namespace astroaccelerate {
 	// fill in the empty bins: 
 	// P_k+1/2 = |F_k+1/2|^2 =~|pi/4 * (F_k - F_k-1)|^2 
 	// (see Handbook of Pulsar astronomy p.135)
-	local_data_inbin[2*tx + 1] =  0.616850275f * ((local_data[tx].x - local_data[tx+1].x) * (local_data[tx].x - local_data[tx+1].x) + (local_data[tx].y - local_data[tx+1].y) * (local_data[tx].y - local_data[tx+1].y));
+	local_data_inbin[2*tx + 1] =  (__nv_bfloat16)0.616850275f * ((local_data[tx].x - local_data[tx+1].x) * (local_data[tx].x - local_data[tx+1].x) + (local_data[tx].y - local_data[tx+1].y) * (local_data[tx].y - local_data[tx+1].y));
 	__syncthreads();
      
 	//write data back to global memory contiguously
@@ -1146,11 +1146,11 @@ namespace astroaccelerate {
     }
   }
 
-  void call_kernel_cuda_ffdotpow_concat_2d_inbin(const dim3 &blocks, const dim3 &threads, float2 *const d_ffdot_plane_cpx, float *const d_ffdot_plane, const int &sigblock, const int &kern_offset, const int &total_blocks, const int &sig_tot_convlen, const int &sig_totlen) {
+  void call_kernel_cuda_ffdotpow_concat_2d_inbin(const dim3 &blocks, const dim3 &threads, __nv_bfloat162 *const d_ffdot_plane_cpx, __nv_bfloat16 *const d_ffdot_plane, const int &sigblock, const int &kern_offset, const int &total_blocks, const int &sig_tot_convlen, const int &sig_totlen) {
     cuda_ffdotpow_concat_2d_inbin<<<blocks, threads>>>(d_ffdot_plane_cpx, d_ffdot_plane, sigblock, kern_offset, total_blocks, sig_tot_convlen, sig_totlen);
   }
 
-  __global__ void cuda_ffdotpow_concat_2d_ndm_inbin(float2* d_ffdot_plane_cpx, float* d_ffdot_plane, int kernlen, int siglen, int nkern, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen, int ndm)
+  __global__ void cuda_ffdotpow_concat_2d_ndm_inbin(__nv_bfloat162* d_ffdot_plane_cpx, __nv_bfloat16* d_ffdot_plane, int kernlen, int siglen, int nkern, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen, int ndm)
   /* Copies useful points from convolved complex f-fdot array (discarding contaminated ends) */
   /* calculates complex signal power and places result in float f-fdot array */
   /* This one performs interbinning on the complex signal before power calculations */
@@ -1165,8 +1165,8 @@ namespace astroaccelerate {
     //   int inbin = 2; //temporary, for test
 
   
-    __shared__ float2 local_data[PTBSIZEX + 1];
-    __shared__ float local_data_inbin[2*PTBSIZEX];
+    __shared__ __nv_bfloat162 local_data[PTBSIZEX + 1];
+    __shared__ __nv_bfloat16 local_data_inbin[2*PTBSIZEX];
  
     for (int dm = 0; dm < ndm; dm++){
       unsigned int dmidx_cpx = dm*ffdotlencpx;
@@ -1192,7 +1192,7 @@ namespace astroaccelerate {
 	  __syncthreads();
 	  // fill in the empty bins: P_k+1/2 = |F_k+1/2|^2 =~|pi/4 * (F_k - F_k-1)|^2 (see Handbook of Pulsar astronomy p.135)
        
-	  local_data_inbin[2*tx + 1] =  0.616850275f * ((local_data[tx].x - local_data[tx+1].x) * (local_data[tx].x - local_data[tx+1].x) + (local_data[tx].y - local_data[tx+1].y) * (local_data[tx].y - local_data[tx+1].y));
+	  local_data_inbin[2*tx + 1] =  (__nv_bfloat16)0.616850275f * ((local_data[tx].x - local_data[tx+1].x) * (local_data[tx].x - local_data[tx+1].x) + (local_data[tx].y - local_data[tx+1].y) * (local_data[tx].y - local_data[tx+1].y));
 	  __syncthreads();
 	  //write data back to global memory
 	  //	int inbin_idx = 2*dmidx_f + 2*(by * sig_totlen) + i*2*siglen + 2*bx* blockDim.x + tx ; 
@@ -1207,12 +1207,12 @@ namespace astroaccelerate {
   }
 
 #ifndef NOCUST
-  __global__ void customfft_fwd_temps_no_reorder(float2* d_signal)
+  __global__ void customfft_fwd_temps_no_reorder(__nv_bfloat162* d_signal)
   {
     int tx = threadIdx.x;
     int bx = blockIdx.x;
 
-    __shared__ float2 s_input[KERNLEN]; 
+    __shared__ __nv_bfloat162 s_input[KERNLEN]; 
 
     s_input[tx]=d_signal[tx + bx*KERNLEN];
     __syncthreads();
@@ -1225,11 +1225,11 @@ namespace astroaccelerate {
 
   }
 
-  void call_kernel_customfft_fwd_temps_no_reorder(float2 *const d_signal) {
+  void call_kernel_customfft_fwd_temps_no_reorder(__nv_bfloat162 *const d_signal) {
     customfft_fwd_temps_no_reorder<<<NKERN,KERNLEN>>>( d_signal);
   }
 
-  __global__ void cuda_convolve_customfft_wes_no_reorder02(float2* d_kernel, float2* d_signal, float *d_ffdot_pw, int sigblock, int sig_tot_convlen, int sig_totlen, int offset, float scale)
+  __global__ void cuda_convolve_customfft_wes_no_reorder02(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat16 *d_ffdot_pw, int sigblock, int sig_tot_convlen, int sig_totlen, int offset, float scale)
   /* convolution kernel using Karel Adamek's custom FFT, deployed here with modifications by Wes Armour.
      It performs the forward FFT and then loops through filters.(1-d blocks)
      It also uses half the templates and computes the rest using the complex conjugate.
@@ -1238,18 +1238,18 @@ namespace astroaccelerate {
   {
     int tx = threadIdx.x;
     int bx = blockIdx.x;
-    float2 ffdotcpx;
-    float2 ffdotcpx_trans;
-    float2 local_data; //fft'd data
+    __nv_bfloat162 ffdotcpx;
+    __nv_bfloat162 ffdotcpx_trans;
+    __nv_bfloat162 local_data; //fft'd data
 
     float one;
     float two;
     float three;
     float four;
 
-    float2 A_DFT_value, B_DFT_value, sA_DFT_value, sB_DFT_value;
-    float2 ftemp2, ftemp, stemp2, stemp;
-    float2 W;
+    __nv_bfloat162 A_DFT_value, B_DFT_value, sA_DFT_value, sB_DFT_value;
+    __nv_bfloat162 ftemp2, ftemp, stemp2, stemp;
+    __nv_bfloat162 W;
     int local_id, warp_id;
     int j, m_param;
     //int load_id, i, n;
@@ -1258,8 +1258,8 @@ namespace astroaccelerate {
     //  int A_write_index,B_write_index;
     int PoT, PoTp1, q;
 	
-    __shared__ float2 s_input[KERNLEN]; //signal input data to FFT
-    __shared__ float2 s_input_trans[KERNLEN]; //static allocation
+    __shared__ __nv_bfloat162 s_input[KERNLEN]; //signal input data to FFT
+    __shared__ __nv_bfloat162 s_input_trans[KERNLEN]; //static allocation
 
 
     int index =  bx*sigblock + tx;
@@ -1315,16 +1315,16 @@ namespace astroaccelerate {
 	sB_DFT_value=s_input_trans[local_id + warp_id*2*WARP + WARP];
 
 	//1st template
-	A_DFT_value.x=parity*A_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.x,local_id+parity);
-	A_DFT_value.y=parity*A_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.y,local_id+parity);
-	B_DFT_value.x=parity*B_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.x,local_id+parity);
-	B_DFT_value.y=parity*B_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.y,local_id+parity);
+	A_DFT_value.x=(__nv_bfloat16)parity*A_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.x,local_id+parity);
+	A_DFT_value.y=(__nv_bfloat16)parity*A_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.y,local_id+parity);
+	B_DFT_value.x=(__nv_bfloat16)parity*B_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.x,local_id+parity);
+	B_DFT_value.y=(__nv_bfloat16)parity*B_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.y,local_id+parity);
 	//2nd template
 
-	sA_DFT_value.x=parity*sA_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.x,local_id+parity);
-	sA_DFT_value.y=parity*sA_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.y,local_id+parity);
-	sB_DFT_value.x=parity*sB_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.x,local_id+parity);
-	sB_DFT_value.y=parity*sB_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.y,local_id+parity);
+	sA_DFT_value.x=(__nv_bfloat16)parity*sA_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.x,local_id+parity);
+	sA_DFT_value.y=(__nv_bfloat16)parity*sA_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.y,local_id+parity);
+	sB_DFT_value.x=(__nv_bfloat16)parity*sB_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.x,local_id+parity);
+	sB_DFT_value.y=(__nv_bfloat16)parity*sB_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.y,local_id+parity);
 
 	//--> First iteration end
 		
@@ -1460,11 +1460,11 @@ namespace astroaccelerate {
     //-------END
   }
 
-  void call_kernel_cuda_convolve_customfft_wes_no_reorder02(const int &blocks, float2 *const d_kernel, float2 *const d_signal, float *const d_ffdot_pw, const int &sigblock, const int &sig_tot_convlen, const int &sig_totlen, const int &offset, const float &scale) {
+  void call_kernel_cuda_convolve_customfft_wes_no_reorder02(const int &blocks, __nv_bfloat162 *const d_kernel, __nv_bfloat162 *const d_signal, __nv_bfloat16 *const d_ffdot_pw, const int &sigblock, const int &sig_tot_convlen, const int &sig_totlen, const int &offset, const float &scale) {
     cuda_convolve_customfft_wes_no_reorder02<<<blocks, KERNLEN>>>(d_kernel, d_signal, d_ffdot_pw, sigblock, sig_tot_convlen, sig_totlen, offset, scale); 
   }
 
-  __global__ void cuda_convolve_customfft_wes_no_reorder02_inbin(float2* d_kernel, float2* d_signal, float *d_ffdot_pw, int sigblock, int sig_tot_convlen, int sig_totlen, int offset, float scale, float2 *ip_edge_points)
+  __global__ void cuda_convolve_customfft_wes_no_reorder02_inbin(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat16 *d_ffdot_pw, int sigblock, int sig_tot_convlen, int sig_totlen, int offset, float scale, __nv_bfloat162 *ip_edge_points)
   /* convolution kernel using Karel Adamek's custom FFT, deployed here with modifications by Wes Armour.
      It performs the forward FFT and then loops through filters.(1-d blocks)
      It also uses half the templates and computes the rest using the complex conjugate.
@@ -1474,18 +1474,18 @@ namespace astroaccelerate {
   {
     int tx = threadIdx.x;
     int bx = blockIdx.x;
-    float2 ffdotcpx;
-    float2 ffdotcpx_trans;
-    float2 local_data; //fft'd data
+    __nv_bfloat162 ffdotcpx;
+    __nv_bfloat162 ffdotcpx_trans;
+    __nv_bfloat162 local_data; //fft'd data
 
     float one;
     float two;
     float three;
     float four;
 
-    float2 A_DFT_value, B_DFT_value, sA_DFT_value, sB_DFT_value;
-    float2 ftemp2, ftemp, stemp2, stemp;
-    float2 W;
+    __nv_bfloat162 A_DFT_value, B_DFT_value, sA_DFT_value, sB_DFT_value;
+    __nv_bfloat162 ftemp2, ftemp, stemp2, stemp;
+    __nv_bfloat162 W;
     int local_id, warp_id;
     int j, m_param;
     //int load_id, i, n;
@@ -1503,8 +1503,8 @@ namespace astroaccelerate {
     //  s_output_ip_trans = &s_output_ip[2*sigblock];
 
     //complex input arrays
-    __shared__ float2 s_input[KERNLEN]; //signal input data to FFT
-    __shared__ float2 s_input_trans[KERNLEN]; //static allocation
+    __shared__ __nv_bfloat162 s_input[KERNLEN]; //signal input data to FFT
+    __shared__ __nv_bfloat162 s_input_trans[KERNLEN]; //static allocation
  
     //setup ip arrays
 
@@ -1563,15 +1563,15 @@ namespace astroaccelerate {
 	sB_DFT_value=s_input_trans[local_id + warp_id*2*WARP + WARP];
 
 	//1st template
-	A_DFT_value.x=parity*A_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.x,local_id+parity);
-	A_DFT_value.y=parity*A_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.y,local_id+parity);
-	B_DFT_value.x=parity*B_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.x,local_id+parity);
-	B_DFT_value.y=parity*B_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.y,local_id+parity);
+	A_DFT_value.x=(__nv_bfloat16)parity*A_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.x,local_id+parity);
+	A_DFT_value.y=(__nv_bfloat16)parity*A_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,A_DFT_value.y,local_id+parity);
+	B_DFT_value.x=(__nv_bfloat16)parity*B_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.x,local_id+parity);
+	B_DFT_value.y=(__nv_bfloat16)parity*B_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,B_DFT_value.y,local_id+parity);
 	//2nd template
-	sA_DFT_value.x=parity*sA_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.x,local_id+parity);
-	sA_DFT_value.y=parity*sA_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.y,local_id+parity);
-	sB_DFT_value.x=parity*sB_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.x,local_id+parity);
-	sB_DFT_value.y=parity*sB_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.y,local_id+parity);
+	sA_DFT_value.x=(__nv_bfloat16)parity*sA_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.x,local_id+parity);
+	sA_DFT_value.y=(__nv_bfloat16)parity*sA_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sA_DFT_value.y,local_id+parity);
+	sB_DFT_value.x=(__nv_bfloat16)parity*sB_DFT_value.x+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.x,local_id+parity);
+	sB_DFT_value.y=(__nv_bfloat16)parity*sB_DFT_value.y+ aa_shfl(AA_ASSUME_MASK,sB_DFT_value.y,local_id+parity);
       
 	//--> First iteration end
 		
@@ -1697,8 +1697,8 @@ namespace astroaccelerate {
 	s_output_ip_trans[2*tx] = pwcalc(s_input_trans[tx +offset]);
       
 	// interpolated points
-	s_output_ip[2*tx+1] = 0.616850275f * ((s_input[tx+offset].x - s_input[tx+1 + offset].x) * (s_input[tx +offset].x - s_input[tx+1 +offset].x) + (s_input[tx+offset].y - s_input[tx+1+offset].y) * (s_input[tx+offset].y - s_input[tx+offset+1].y)); 
-	s_output_ip_trans[2*tx+1] = 0.616850275 * ((s_input_trans[tx+offset].x - s_input_trans[tx+1+offset].x) * (s_input_trans[tx+offset].x - s_input_trans[tx+1+offset].x) + (s_input_trans[tx+offset].y - s_input_trans[tx+1+offset].y) * (s_input_trans[tx+offset].y - s_input_trans[tx+1+offset].y)); 
+	s_output_ip[2*tx+1] = (__nv_bfloat16)0.616850275f * ((s_input[tx+offset].x - s_input[tx+1 + offset].x) * (s_input[tx +offset].x - s_input[tx+1 +offset].x) + (s_input[tx+offset].y - s_input[tx+1+offset].y) * (s_input[tx+offset].y - s_input[tx+offset+1].y)); 
+	s_output_ip_trans[2*tx+1] = (__nv_bfloat16)0.616850275 * ((s_input_trans[tx+offset].x - s_input_trans[tx+1+offset].x) * (s_input_trans[tx+offset].x - s_input_trans[tx+1+offset].x) + (s_input_trans[tx+offset].y - s_input_trans[tx+1+offset].y) * (s_input_trans[tx+offset].y - s_input_trans[tx+1+offset].y)); 
       }
       __syncthreads();
     
@@ -1740,7 +1740,7 @@ namespace astroaccelerate {
     if(tx < sigblock){
       s_output_ip[2*tx] = pwcalc(s_input[tx +offset]);
 
-      s_output_ip[2*tx+1] = 0.616850275f * ((s_input[tx+offset].x - s_input[tx+1 + offset].x) * (s_input[tx +offset].x - s_input[tx+1 +offset].x) + (s_input[tx+offset].y - s_input[tx+1+offset].y) * (s_input[tx+offset].y - s_input[tx+offset+1].y)); 
+      s_output_ip[2*tx+1] = (__nv_bfloat16)0.616850275f * ((s_input[tx+offset].x - s_input[tx+1 + offset].x) * (s_input[tx +offset].x - s_input[tx+1 +offset].x) + (s_input[tx+offset].y - s_input[tx+1+offset].y) * (s_input[tx+offset].y - s_input[tx+offset+1].y)); 
     }
     // write powers 
     if(tx < sigblock){
@@ -1750,18 +1750,18 @@ namespace astroaccelerate {
     //--------END
   }
 
-  void call_kernel_cuda_convolve_customfft_wes_no_reorder02_inbin(const int &blocks, float2 *const d_kernel, float2 *const d_signal, float *const d_ffdot_pw, const int &sigblock, const int &sig_tot_convlen, const int &sig_totlen, const int &offset, const float &scale, float2 *const ip_edge_points) {
+  void call_kernel_cuda_convolve_customfft_wes_no_reorder02_inbin(const int &blocks, __nv_bfloat162 *const d_kernel, __nv_bfloat162 *const d_signal, __nv_bfloat16 *const d_ffdot_pw, const int &sigblock, const int &sig_tot_convlen, const int &sig_totlen, const int &offset, const float &scale, float2 *const ip_edge_points) {
     cuda_convolve_customfft_wes_no_reorder02_inbin<<<blocks, KERNLEN>>>(d_kernel, d_signal, d_ffdot_pw, sigblock, sig_tot_convlen, sig_totlen, offset, scale, ip_edge_points);
   }
 
 
-  __global__ void GPU_CONV_kFFT_mk11_2elem_2v(float2 const* __restrict__ d_input_signal, float *d_output_plane_reduced, float2 const* __restrict__ d_templates, int useful_part_size, int offset, int nConvolutions, float scale) {
-    __shared__ float2 s_input_1[KERNLEN];
-    __shared__ float2 s_input_2[KERNLEN];
+  __global__ void GPU_CONV_kFFT_mk11_2elem_2v(__nv_bfloat162 const* __restrict__ d_input_signal, __nv_bfloat16 *d_output_plane_reduced, __nv_bfloat162 const* __restrict__ d_templates, int useful_part_size, int offset, int nConvolutions, __nv_bfloat16 scale) {
+    __shared__ __nv_bfloat162 s_input_1[KERNLEN];
+    __shared__ __nv_bfloat162 s_input_2[KERNLEN];
     // Convolution
-    float2 r_templates_1[2];
-    float2 r_templates_2[2];
-    float2 signal[2];
+    __nv_bfloat162 r_templates_1[2];
+    __nv_bfloat162 r_templates_2[2];
+    __nv_bfloat162 signal[2];
     int pos, t;
     // Loading data
     //prepare_signal(s_input_1, d_input_signal, useful_part_size, offset);
@@ -1842,14 +1842,14 @@ namespace astroaccelerate {
   }
 
 
-  __global__ void GPU_CONV_kFFT_mk11_4elem_2v(float2 const* __restrict__ d_input_signal, float *d_output_plane_reduced, float2 const* __restrict__ d_templates, int useful_part_size, int offset, int nConvolutions, float scale) {
-    __shared__ float2 s_input_1[KERNLEN];
-    __shared__ float2 s_input_2[KERNLEN];
+  __global__ void GPU_CONV_kFFT_mk11_4elem_2v(__nv_bfloat162 const* __restrict__ d_input_signal, __nv_bfloat16 *d_output_plane_reduced, __nv_bfloat162 const* __restrict__ d_templates, int useful_part_size, int offset, int nConvolutions, __nv_bfloat16 scale) {
+    __shared__ __nv_bfloat162 s_input_1[KERNLEN];
+    __shared__ __nv_bfloat162 s_input_2[KERNLEN];
     // Convolution
-    float2 r_templates_1[4];
+    __nv_bfloat162 r_templates_1[4];
     //float2 r_templates_2[4];
-    float2 signal[4];
-    float xx, yy, xy, yx;
+    __nv_bfloat162 signal[4];
+    __nv_bfloat16 xx, yy, xy, yx;
     int pos, t;
     // Loading data
     //prepare_signal(s_input_1, d_input_signal, useful_part_size, offset);
@@ -1995,7 +1995,7 @@ namespace astroaccelerate {
   }
 
   /** \brief Kernel wrapper function for GPU_CONV_kFFT_mk11_4elem_2v kernel function. */
-  void call_kernel_GPU_CONV_kFFT_mk11_4elem_2v(const dim3 &grid_size, const dim3 &block_size, float2 const*const d_input_signal, float *const d_output_plane_reduced, float2 const*const d_templates, const int &useful_part_size, const int &offset, const int &nConvolutions, const float &scale) {
+  void call_kernel_GPU_CONV_kFFT_mk11_4elem_2v(const dim3 &grid_size, const dim3 &block_size, __nv_bfloat162 const*const d_input_signal, __nv_bfloat16 *const d_output_plane_reduced, __nv_bfloat162 const*const d_templates, const int &useful_part_size, const int &offset, const int &nConvolutions, const __nv_bfloat16 &scale) {
     GPU_CONV_kFFT_mk11_4elem_2v<<<grid_size, block_size>>>(d_input_signal, d_output_plane_reduced, d_templates, useful_part_size, offset, nConvolutions, scale);
   }
 

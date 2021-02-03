@@ -21,6 +21,7 @@ namespace astroaccelerate {
 	cufftComplex *presto_gen_w_response(double roffset, int numbetween, double z, double w, int numkern);
 	
 	void presto_place_complex_kernel(cufftComplex * kernel, int numkernel, cufftComplex * result, int numresult);
+	oid presto_place_bfloat_complex_kernel(cufftComplex * kernel, int numkernel, cufftComplex * result, int numresult);
 	void presto_dered_sig(cufftComplex * fft, int numamps);
 	void presto_norm(cufftComplex * fft, int numamps);
 

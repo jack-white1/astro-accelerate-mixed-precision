@@ -52,10 +52,10 @@ namespace astroaccelerate {
     float* d_in_signal; 
     __nv_bfloat162* d_fft_signal;
     __nv_bfloat162  *d_ext_data;
-    float2 *d_kernel;
-    float *d_ffdot_pwr;
+    __nv_bfloat162 *d_kernel;
+    __nv_bfloat16 *d_ffdot_pwr;
     float *d_ffdot_summed;
-    float2 *d_ffdot_cpx;
+    __nv_bfloat162 *d_ffdot_cpx;
     float2 *ip_edge_points;// edge points for interbinning in kfft
     float *d_fdas_peak_list; // added by KA
     size_t mem_insig;
@@ -108,7 +108,7 @@ namespace astroaccelerate {
 
   void fdas_create_acc_sig(fdas_new_acc_sig *acc_sig, cmd_args *cmdargs);
 
-  void fdas_create_acc_kernels(cufftComplex* d_kernel, cmd_args *cmdargs );
+  void fdas_create_acc_kernels(__nv_bfloat162* d_kernel, cmd_args *cmdargs );
 
   void fdas_cuda_create_fftplans( fdas_cufftplan *fftplans, fdas_params *params);
 
