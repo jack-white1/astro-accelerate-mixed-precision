@@ -438,33 +438,6 @@ void presto_place_complex_kernel(cufftComplex * kernel, int numkernel, cufftComp
     memcpy(result + numresult - halfwidth, kernel, sizeof(cufftComplex) * halfwidth);
   }
 
-  void presto_place_bfloat_complex_kernel(cufftComplex * kernel, int numkernel, cufftComplex * result, int numresult)
-  /* This routine places the kernel in a zero filled array */
-  /* with half of the response at the beginning and half   */
-  /* of the response at the end of the result array.  See  */
-  /* Numerical Recipes in C 2ed, p 541 for more info.      */
-  /* Arguments:                                            */
-  /*   'kernel' is a complex response function.  Bin zero  */
-  /*      response is in bin numkernel/2.                  */
-  /*   'numkernel' is the number of points in the kernel.  */
-  /*      This should be an even number.                   */
-  /*   'result' is the result array.                       */
-  /*   'numresult' is the number of points in the result.  */
-  {
-    int ii, halfwidth;
-    cufftComplex zeros;
-    zeros.x = zeros.y = 0.0;
-  
-    halfwidth = numkernel / 2;
-  
-    for (ii = 0; ii < numresult; ii++){
-      result[ii] = zeros;
-    }
-
-    memcpy(result, kernel + halfwidth, sizeof(cufftComplex) * halfwidth);
-    memcpy(result + numresult - halfwidth, kernel, sizeof(cufftComplex) * halfwidth);
-  }
-
   void presto_dered_sig(cufftComplex * fft, int numamps)
   /* Attempt to remove rednoise from a time series by using   */
   /* a median-filter of logarithmically increasing width.     */

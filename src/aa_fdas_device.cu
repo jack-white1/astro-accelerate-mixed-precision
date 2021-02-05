@@ -1206,6 +1206,7 @@ namespace astroaccelerate {
     }
   }
 
+
 #ifndef NOCUST
   __global__ void customfft_fwd_temps_no_reorder(__nv_bfloat162* d_signal)
   {

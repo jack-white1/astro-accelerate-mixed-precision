@@ -182,24 +182,71 @@ namespace astroaccelerate {
    * \brief Using functions from the original PRESTO accelsearch code, (small adaptations for variables and remove normal interpolation management - input is already interpolated signal).
    * \author Scott Ransom.
    */
-  void fdas_create_acc_kernels(__nv_bfloat162* d_kernel, cmd_args *cmdargs ) {
+
+  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, cmd_args *cmdargs) {
+    
+    //pointers to memory for single precision kernels
+    cufftComplex *device_float_kernel, *host_float_kernel;
+
+    //pointers to memory for half precision kernels
+    __nv_bfloat162 *host_bfloat16_kernel;
+
+    //allocate sufficient memory for kernels
+    host_float_kernel = (float2*) malloc(NKERN*KERNLEN*sizeof(float2));
+    host_bfloat16_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
+    
+    //use existing function to create single precision kernels at device_float_kernel
+    fdas_create_acc_kernels(device_float_kernel, &cmdargs);
+
+    //retrieve kernels from device and put them at host_float_kernel
+    cudaMemcpy(host_float_kernel, device_float_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyDeviceToHost);
+    cudaFree(device_float_kernel);
+
+
+    //need to convert single precision kernels (now on host)
+    //to half precision and then copy them back to d_kernel on GPU
+    float2 temp_float_vec;
+    __nv_bfloat162 temp_bfloat16_vec;
+    for (i=0; i<KERNLEN*NKERN; i++){
+      //using pointer notation
+      //temp_float_vec = *(host_float_kernel+i*sizeof(float2);
+      //temp_bfloat16_vec.x = (__nv_bfloat16)temp_float_vec.x;
+      //temp_bfloat16_vec.y = (__nv_bfloat16)temp_float_vec.y;
+      //*(host_bfloat16_kernel+i*sizeof(__nv_bfloat162)) = temp_bfloat16_vec;
+
+      //using brackets notation because its easier to read
+      temp_float_vec = host_float_kernel[i];
+      temp_bfloat16_vec.x = (__nv_bfloat16)temp_float_vec.x;
+      temp_bfloat16_vec.y = (__nv_bfloat16)temp_float_vec.y;
+      host_bfloat16_kernel[i]=temp_bfloat16_vec;
+    }
+
+    //copy bfloat kernels back to GPU at d_kernel
+  cudaMemcpy(d_kernel, host_bfloat16_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice);
+
+  //free memory on host
+  free(host_float_kernel);
+  free(host_bfloat16_kernel);
+  }
+
+  void fdas_create_acc_kernels(cufftComplex* d_kernel, cmd_args *cmdargs ) {
     int ii;
     int inbin = 1;
-    __nv_bfloat162 *h_kernel, *tempkern;
+    cufftComplex *h_kernel, *tempkern;
     cufftHandle templates_plan; // for host kernel fft
     int nrank = 1;
-    long long int n[] = {KERNLEN};
+    int n[] = {KERNLEN};
     int idist = n[0], odist =n[0];
-    long long int *inembed = n, *onembed = n;
+    int *inembed = n, *onembed = n;
     int istride =1, ostride = 1;
 
     //allocate kernel array and prepare fft
-    h_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
+    h_kernel = (cufftComplex*) malloc(NKERN*KERNLEN*sizeof(float2));
 
-    // batched fft plan for the templates array, modified to bfloat16
-    size_t workSize = 0;
-    cufftXtMakePlanMany(templates_plan, nrank, n, inembed, istride, idist, CUDA_C_16BF,
-        onembed, ostride, odist, CUDA_C_16BF, NKERN, &workSize, CUDA_C_16BF);
+    // batched fft plan for the templates array
+    cufftPlanMany( &templates_plan, nrank, n, inembed , istride, 
+       idist, onembed, ostride,
+       odist, CUFFT_C2C, NKERN); 
 
     for (ii = 0; ii < NKERN; ii++){
       double z = (-ZMAX+ii*ACCEL_STEP);
@@ -215,17 +262,17 @@ namespace astroaccelerate {
     for (ii = 0; ii < NKERN; ii++){
       int boxcar_width=ii*FDAS_TEST_FILTER_INCREMENT;
       for(int f=0; f<KERNLEN; f++){
-	h_kernel[ii*KERNLEN + f].x = 0;
-	h_kernel[ii*KERNLEN + f].y = 0;
-	  
-	if(f<boxcar_width/2) h_kernel[ii*KERNLEN + f].x = 1.0;
-	if(f>=(KERNLEN-boxcar_width/2)) h_kernel[ii*KERNLEN + f].x = 1.0;
+  h_kernel[ii*KERNLEN + f].x = 0;
+  h_kernel[ii*KERNLEN + f].y = 0;
+    
+  if(f<boxcar_width/2) h_kernel[ii*KERNLEN + f].x = 1.0;
+  if(f>=(KERNLEN-boxcar_width/2)) h_kernel[ii*KERNLEN + f].x = 1.0;
       }
     }
 #endif
     //!TEST!: replace templates here. Template width: numkern; padded width: KERNLEN
   
-    cudaError_t e = cudaMemcpy( d_kernel, h_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice); // upload kernels to GPU
+    cudaError_t e = cudaMemcpy( d_kernel, h_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyHostToDevice); // upload kernels to GPU
     
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
@@ -238,7 +285,7 @@ namespace astroaccelerate {
 #endif
     //use cuFFT to transform the templates
     if (cmdargs->basic)
-      cufftXtExec(templates_plan, d_kernel, d_kernel, CUFFT_FORWARD); 
+      cufftExecC2C(templates_plan, d_kernel, d_kernel, CUFFT_FORWARD); 
 
     free(h_kernel);
 
@@ -430,7 +477,7 @@ namespace astroaccelerate {
     call_kernel_cuda_ffdotpow_concat_2d(pwblocks, pwthreads, gpuarrays->d_ffdot_cpx, gpuarrays->d_ffdot_pwr, params->sigblock, params->offset, params->nblocks, params->extlen, params->siglen);
 
   }
-
+/*
 #ifndef NOCUST
   void fdas_cuda_customfft(fdas_cufftplan *fftplans, fdas_gpuarrays *gpuarrays, cmd_args *cmdargs, fdas_params *params) {
     //int nthreads;
@@ -533,7 +580,7 @@ namespace astroaccelerate {
       gridSize.z = 1;
       blockSize.x = KERNLEN/2;
       GPU_CONV_kFFT_mk11_2elem_2v<<<gridSize,blockSize>>>(gpuarrays->d_ext_data, gpuarrays->d_ffdot_pwr, gpuarrays->d_kernel, params->sigblock, params->offset, params->nblocks, params->scale);
-      */
+      
 		
       //-------------------------------------------
       //Four elements per thread
@@ -545,7 +592,7 @@ namespace astroaccelerate {
     }
   }
 #endif
-
+*/
   /** \brief Write fdas list to disk. */
   void fdas_write_list(fdas_gpuarrays *gpuarrays, cmd_args *cmdargs, fdas_params *params, float *h_MSD, float dm_low, int dm_count, float dm_step, unsigned int list_size){
     int ibin=1;
