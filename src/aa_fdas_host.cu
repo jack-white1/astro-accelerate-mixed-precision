@@ -196,7 +196,7 @@ namespace astroaccelerate {
     host_bfloat16_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
     
     //use existing function to create single precision kernels at device_float_kernel
-    fdas_create_acc_kernels(device_float_kernel, &cmdargs);
+    fdas_create_acc_kernels(device_float_kernel, cmdargs);
 
     //retrieve kernels from device and put them at host_float_kernel
     cudaMemcpy(host_float_kernel, device_float_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyDeviceToHost);
@@ -207,7 +207,7 @@ namespace astroaccelerate {
     //to half precision and then copy them back to d_kernel on GPU
     float2 temp_float_vec;
     __nv_bfloat162 temp_bfloat16_vec;
-    for (i=0; i<KERNLEN*NKERN; i++){
+    for (int i=0; i<KERNLEN*NKERN; i++){
       //using pointer notation
       //temp_float_vec = *(host_float_kernel+i*sizeof(float2);
       //temp_bfloat16_vec.x = (__nv_bfloat16)temp_float_vec.x;
@@ -277,12 +277,13 @@ namespace astroaccelerate {
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
-    
+/*
 #ifndef NOCUST
     //use kerel's non-reordered fft
     if (cmdargs->kfft)
       call_kernel_customfft_fwd_temps_no_reorder(d_kernel);  
 #endif
+*/
     //use cuFFT to transform the templates
     if (cmdargs->basic)
       cufftExecC2C(templates_plan, d_kernel, d_kernel, CUFFT_FORWARD); 

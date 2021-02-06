@@ -1038,7 +1038,7 @@ namespace astroaccelerate {
     cuda_overlap_copy_smallblk<<<blocks, KERNLEN>>>(d_ext_data, d_cpx_signal, sigblock, sig_rfftlen, sig_tot_convlen, kern_offset, total_blocks);
   }
 
-  __global__ void cuda_convolve_reg_1d_halftemps(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat162* d_ffdot_plane,int sig_tot_convlen, __nv_bfloat16 scale)
+  __global__ void cuda_convolve_reg_1d_halftemps(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat162* d_ffdot_plane,int sig_tot_convlen, float scale)
   {
     /* Load only half templates - use register arrays */
     int tx = threadIdx.x;
@@ -1054,17 +1054,17 @@ namespace astroaccelerate {
 #pragma unroll
       for (int i = 0; i < ZMAX/2; i++){
 	//upper half
-	d_ffdot_plane[i*sig_tot_convlen + j + tidx ].x = (local_data.x*tempkern[i].x - local_data.y*tempkern[i].y) * scale;
-	d_ffdot_plane[i*sig_tot_convlen + j + tidx ].y = (local_data.x*tempkern[i].y + local_data.y*tempkern[i].x) * scale;
+	d_ffdot_plane[i*sig_tot_convlen + j + tidx ].x = (local_data.x*tempkern[i].x - local_data.y*tempkern[i].y) * (__nv_bfloat16)scale;
+	d_ffdot_plane[i*sig_tot_convlen + j + tidx ].y = (local_data.x*tempkern[i].y + local_data.y*tempkern[i].x) * (__nv_bfloat16)scale;
 	//complex conjugate filter lower half
-	d_ffdot_plane[(ZMAX - i)*sig_tot_convlen + j + tidx ].x = (local_data.x*tempkern[i].x + local_data.y*tempkern[i].y) * scale;
-	d_ffdot_plane[(ZMAX - i)*sig_tot_convlen + j + tidx ].y = (-local_data.x*tempkern[i].y + local_data.y*tempkern[i].x) * scale;
+	d_ffdot_plane[(ZMAX - i)*sig_tot_convlen + j + tidx ].x = (local_data.x*tempkern[i].x + local_data.y*tempkern[i].y) * (__nv_bfloat16)scale;
+	d_ffdot_plane[(ZMAX - i)*sig_tot_convlen + j + tidx ].y = (-local_data.x*tempkern[i].y + local_data.y*tempkern[i].x) * (__nv_bfloat16)scale;
       }
 
       //do z=0
       __nv_bfloat162 tempz = __ldg(&d_kernel[(ZMAX/2)*KERNLEN + tidx]) ;
-      d_ffdot_plane[(ZMAX/2)*sig_tot_convlen + j + tidx ].x = (local_data.x*tempz.x - local_data.y*tempz.y) * scale;
-      d_ffdot_plane[(ZMAX/2)*sig_tot_convlen + j + tidx ].y = (local_data.x*tempz.y + local_data.y*tempz.x) * scale;
+      d_ffdot_plane[(ZMAX/2)*sig_tot_convlen + j + tidx ].x = (local_data.x*tempz.x - local_data.y*tempz.y) * (__nv_bfloat16)scale;
+      d_ffdot_plane[(ZMAX/2)*sig_tot_convlen + j + tidx ].y = (local_data.x*tempz.y + local_data.y*tempz.x) * (__nv_bfloat16)scale;
     }
   }
 
@@ -1206,7 +1206,7 @@ namespace astroaccelerate {
     }
   }
 
-
+/*
 #ifndef NOCUST
   __global__ void customfft_fwd_temps_no_reorder(__nv_bfloat162* d_signal)
   {
@@ -1231,11 +1231,11 @@ namespace astroaccelerate {
   }
 
   __global__ void cuda_convolve_customfft_wes_no_reorder02(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat16 *d_ffdot_pw, int sigblock, int sig_tot_convlen, int sig_totlen, int offset, float scale)
-  /* convolution kernel using Karel Adamek's custom FFT, deployed here with modifications by Wes Armour.
-     It performs the forward FFT and then loops through filters.(1-d blocks)
-     It also uses half the templates and computes the rest using the complex conjugate.
-     The modifications are optimizing speed by computing FFTs on two templates with one synchronization point. 
-     In this version we apply Karel's kernel with removed de-shuffling of the data during the FFT.*/
+  // convolution kernel using Karel Adamek's custom FFT, deployed here with modifications by Wes Armour.
+  // It performs the forward FFT and then loops through filters.(1-d blocks)
+  // It also uses half the templates and computes the rest using the complex conjugate.
+  // The modifications are optimizing speed by computing FFTs on two templates with one synchronization point. 
+  // In this version we apply Karel's kernel with removed de-shuffling of the data during the FFT.
   {
     int tx = threadIdx.x;
     int bx = blockIdx.x;
@@ -1466,12 +1466,12 @@ namespace astroaccelerate {
   }
 
   __global__ void cuda_convolve_customfft_wes_no_reorder02_inbin(__nv_bfloat162* d_kernel, __nv_bfloat162* d_signal, __nv_bfloat16 *d_ffdot_pw, int sigblock, int sig_tot_convlen, int sig_totlen, int offset, float scale, __nv_bfloat162 *ip_edge_points)
-  /* convolution kernel using Karel Adamek's custom FFT, deployed here with modifications by Wes Armour.
-     It performs the forward FFT and then loops through filters.(1-d blocks)
-     It also uses half the templates and computes the rest using the complex conjugate.
-     The modifications are optimizing speed by computing FFTs on two templates with one synchronization point. 
-     Karel's kernel with removed de-shuffling of the data during the FFT.
-     In this version we apply interbinning (fourier amplitudes interpolation in two bins)*/
+  // convolution kernel using Karel Adamek's custom FFT, deployed here with modifications by Wes Armour.
+  // It performs the forward FFT and then loops through filters.(1-d blocks)
+  // It also uses half the templates and computes the rest using the complex conjugate.
+  // The modifications are optimizing speed by computing FFTs on two templates with one synchronization point. 
+  // Karel's kernel with removed de-shuffling of the data during the FFT.
+  // In this version we apply interbinning (fourier amplitudes interpolation in two bins)
   {
     int tx = threadIdx.x;
     int bx = blockIdx.x;
@@ -1995,7 +1995,7 @@ namespace astroaccelerate {
 	
   }
 
-  /** \brief Kernel wrapper function for GPU_CONV_kFFT_mk11_4elem_2v kernel function. */
+  //brief Kernel wrapper function for GPU_CONV_kFFT_mk11_4elem_2v kernel function. 
   void call_kernel_GPU_CONV_kFFT_mk11_4elem_2v(const dim3 &grid_size, const dim3 &block_size, __nv_bfloat162 const*const d_input_signal, __nv_bfloat16 *const d_output_plane_reduced, __nv_bfloat162 const*const d_templates, const int &useful_part_size, const int &offset, const int &nConvolutions, const __nv_bfloat16 &scale) {
     GPU_CONV_kFFT_mk11_4elem_2v<<<grid_size, block_size>>>(d_input_signal, d_output_plane_reduced, d_templates, useful_part_size, offset, nConvolutions, scale);
   }
@@ -2003,3 +2003,5 @@ namespace astroaccelerate {
 } //namespace astroaccelerate
   
 #endif
+*/
+}

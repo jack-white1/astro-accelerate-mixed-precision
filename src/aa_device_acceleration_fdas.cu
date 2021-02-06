@@ -373,21 +373,22 @@ namespace astroaccelerate {
 	      printf("\n\nConvolution using basic algorithm with cuFFT\nTotal process took: %f ms per iteration \nTotal time %d iterations: %f ms\n", t_gpu_i, iter, t_gpu);
 	    }
 
-#ifndef NOCUST
+/*#ifndef NOCUST
 	    if (cmdargs.kfft) {
 	      printf("\nMain: running FDAS with custom fft\n");
 	      gettimeofday(&t_start, NULL); //don't time transfer
 	      fdas_cuda_customfft(&fftplans, &gpuarrays, &cmdargs, &params);
-	      /*
-	       * Same question about fftplans here
-	       */
+	      
+	      //Same question about fftplans here
+	       
 	      cudaDeviceSynchronize();
 	      gettimeofday(&t_end, NULL);
 	      t_gpu = (double) (t_end.tv_sec + (t_end.tv_usec / 1000000.0)  - t_start.tv_sec - (t_start.tv_usec/ 1000000.0)) * 1000.0;
 	      t_gpu_i = (t_gpu / (double)iter);
 	      printf("\n\nConvolution using custom FFT:\nTotal process took: %f ms\n per iteration \nTotal time %d iterations: %f ms\n", t_gpu_i, iter, t_gpu);
 	    }
-#endif /*
+#endif */
+/*
 	    // Calculating base level noise and peak find
 	    if(cmdargs.basic || cmdargs.kfft){
 	      //------------- Testing BLN
