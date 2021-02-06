@@ -53,6 +53,7 @@ namespace astroaccelerate {
     __nv_bfloat162* d_fft_signal;
     __nv_bfloat162  *d_ext_data;
     __nv_bfloat162 *d_kernel;
+    float2 *temp_kernel; //pointer to intermediate (single precision) kernel
     __nv_bfloat16 *d_ffdot_pwr;
     float *d_ffdot_summed;
     __nv_bfloat162 *d_ffdot_cpx;

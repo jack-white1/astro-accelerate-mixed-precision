@@ -77,6 +77,12 @@ namespace astroaccelerate {
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
+    e = cudaMalloc((void**)&arrays->temp_kernel, KERNLEN*sizeof(float2)*NKERN );
+
+    if(e != cudaSuccess) {
+      LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+    }
+
     //ffdot planes
     e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot );
 
@@ -156,6 +162,12 @@ namespace astroaccelerate {
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
+
+    e = cudaFree(arrays->temp_kernel);
+
+    if(e != cudaSuccess) {
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+    }
     
     if(cmdargs->basic) {
       e = cudaFree(arrays->d_ffdot_cpx);
@@ -183,7 +195,7 @@ namespace astroaccelerate {
    * \author Scott Ransom.
    */
 
-  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, cufftComplex* temp_kernel_pointer, cmd_args *cmdargs) {
+  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, float2* temp_kernel_pointer, cmd_args *cmdargs) {
     
     //pointers to memory for single precision kernels
     cufftComplex *device_float_kernel, *host_float_kernel;
