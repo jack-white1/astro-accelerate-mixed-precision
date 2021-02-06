@@ -108,7 +108,7 @@ namespace astroaccelerate {
 
   void fdas_create_acc_sig(fdas_new_acc_sig *acc_sig, cmd_args *cmdargs);
 
-  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, cmd_args *cmdargs );
+  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, cufftComplex* temp_kernel_pointer, cmd_args *cmdargs );
 
   void fdas_create_acc_kernels(cufftComplex* d_kernel, cmd_args *cmdargs );
 

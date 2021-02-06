@@ -183,7 +183,7 @@ namespace astroaccelerate {
    * \author Scott Ransom.
    */
 
-  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, cmd_args *cmdargs) {
+  void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, cufftComplex* temp_kernel_pointer, cmd_args *cmdargs) {
     
     //pointers to memory for single precision kernels
     cufftComplex *device_float_kernel, *host_float_kernel;
@@ -196,10 +196,15 @@ namespace astroaccelerate {
     host_bfloat16_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
     
     //use existing function to create single precision kernels at device_float_kernel
-    fdas_create_acc_kernels(device_float_kernel, cmdargs);
+    fdas_create_acc_kernels(temp_kernel_pointer, cmdargs);
 
     //retrieve kernels from device and put them at host_float_kernel
-    cudaMemcpy(host_float_kernel, device_float_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyDeviceToHost);
+    cudaError_t e = cudaMemcpy(host_float_kernel, temp_kernel_pointer, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyDeviceToHost);
+    
+    if(e != cudaSuccess) {
+      LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_bfloat_acc_kernels() D2H (" + std::string(cudaGetErrorString(e)) + ")");
+    }
+
     cudaFree(device_float_kernel);
 
 
@@ -222,7 +227,11 @@ namespace astroaccelerate {
     }
 
     //copy bfloat kernels back to GPU at d_kernel
-  cudaMemcpy(d_kernel, host_bfloat16_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice);
+    e = cudaMemcpy(d_kernel, host_bfloat16_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice);
+
+    if(e != cudaSuccess) {
+      LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_bfloat_acc_kernels() H2D (" + std::string(cudaGetErrorString(e)) + ")");
+    }
 
   //free memory on host
   free(host_float_kernel);
@@ -272,10 +281,10 @@ namespace astroaccelerate {
 #endif
     //!TEST!: replace templates here. Template width: numkern; padded width: KERNLEN
   
-    cudaError_t e = cudaMemcpy( d_kernel, h_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyHostToDevice); // upload kernels to GPU
+    cudaError_t e = cudaMemcpy(d_kernel, h_kernel, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyHostToDevice); // upload kernels to GPU
     
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_acc_kernels() (" + std::string(cudaGetErrorString(e)) + ")");
     }
 /*
 #ifndef NOCUST
@@ -397,7 +406,7 @@ namespace astroaccelerate {
       f2temp[f].x = ftemp[f];
       f2temp[f].y = 0;
     }
-    e = cudaMemcpy(gpuarrays->d_fft_signal, f2temp, (params->rfftlen)*sizeof(float2), cudaMemcpyHostToDevice);
+    e = cudaMemcpy(gpuarrays->d_fft_signal, f2temp, (params->rfftlen)*sizeof(__nv_bfloat162), cudaMemcpyHostToDevice);
     
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");

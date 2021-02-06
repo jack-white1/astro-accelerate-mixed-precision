@@ -221,7 +221,10 @@ namespace astroaccelerate {
 	// Calculate kernel templates on CPU and upload-fft on GPU
 	printf("\nCreating acceleration templates with KERNLEN=%d, NKERN = %d zmax=%d... ",	KERNLEN, NKERN, ZMAX);
 
-	fdas_create_bfloat_acc_kernels(gpuarrays.d_kernel, &cmdargs);
+	//temp_kernel_pointer is for cufftComplex type
+	cufftComplex *temp_kernel_pointer;
+
+	fdas_create_bfloat_acc_kernels(gpuarrays.d_kernel, temp_kernel_pointer, &cmdargs);
 	printf(" done.\n");
 	//getLastCudaError("\nCuda Error\n");
 
