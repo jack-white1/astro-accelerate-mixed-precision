@@ -68,6 +68,29 @@ namespace astroaccelerate {
     size_t mem_max_list_size; // maximum length of candate list in bytes added by KA
   }fdas_gpuarrays;
 
+    /**
+   * \struct fdas_gpuarrays_float
+   * \brief Struct to hold the device data in float form.
+   */
+  typedef struct{
+    float* d_in_signal; 
+    float2* d_fft_signal;
+    float2  *d_ext_data;
+    float2 *d_kernel;
+    float *d_ffdot_pwr;
+    float *d_ffdot_summed;
+    float2 *d_ffdot_cpx;
+    float2 *ip_edge_points;// edge points for interbinning in kfft
+    float *d_fdas_peak_list; // added by KA
+    size_t mem_insig;
+    size_t mem_rfft;
+    size_t mem_extsig;
+    size_t mem_ffdot;
+    size_t mem_ffdot_cpx;
+    size_t mem_ipedge; // edge points for interbinning in kfft
+    size_t mem_max_list_size; // maximum length of candate list in bytes added by KA
+  }fdas_gpuarrays_float;
+
   /**
    * \struct fdas_cufftplan
    * \brief Type to hold cufft plan data.
@@ -105,7 +128,11 @@ namespace astroaccelerate {
 
   void fdas_alloc_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs);
 
+  void fdas_alloc_gpu_arrays_float(fdas_gpuarrays_float *arrays,  cmd_args *cmdargs);
+
   void fdas_free_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs);
+
+  void fdas_free_gpu_arrays_float(fdas_gpuarrays_float *arrays,  cmd_args *cmdargs);
 
   void fdas_create_acc_sig(fdas_new_acc_sig *acc_sig, cmd_args *cmdargs);
 
@@ -119,11 +146,17 @@ namespace astroaccelerate {
 /*
   void fdas_cuda_customfft(fdas_cufftplan *fftplans, fdas_gpuarrays *gpuarrays, cmd_args *cmdargs, fdas_params *params );
 */
-  void fdas_write_list(fdas_gpuarrays *gpuarrays, cmd_args *cmdargs, fdas_params *params, float *h_MSD, float dm_low, int dm_count, float dm_step, unsigned int list_size);
+  void fdas_write_list(fdas_gpuarrays_float *gpuarrays, cmd_args *cmdargs, fdas_params *params, float *h_MSD, float dm_low, int dm_count, float dm_step, unsigned int list_size);
 
-  void fdas_write_ffdot(fdas_gpuarrays *gpuarrays, cmd_args *cmdargs, fdas_params *params, float dm_low, int dm_count, float dm_step );
+  void fdas_write_ffdot(fdas_gpuarrays_float *gpuarrays, cmd_args *cmdargs, fdas_params *params, float dm_low, int dm_count, float dm_step );
 
   void fdas_write_test_ffdot(fdas_gpuarrays *gpuarrays, cmd_args *cmdargs, fdas_params *params, float dm_low, int dm_count, float dm_step );
+
+  void fdas_transfer_gpu_arrays_bfloat16_to_float(fdas_gpuarrays_float *out_arrays, fdas_gpuarrays *in_arrays, cmd_args *cmdargs);
+
+  cudaError_t deep_convert_bfloat162_to_float2(float2 *dest_ptr, __nv_bfloat162 *source_ptr, size_t source_len);
+
+  cudaError_t deep_convert_bfloat16_to_float(float *dest_ptr, __nv_bfloat16 *source_ptr, size_t source_len);
 
 } // namespace astroaccelerate
   

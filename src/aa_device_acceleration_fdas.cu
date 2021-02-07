@@ -53,6 +53,7 @@ namespace astroaccelerate {
     // fdas_new_acc_sig acc_sig;
     astroaccelerate::cmd_args cmdargs;
     astroaccelerate::fdas_gpuarrays gpuarrays;
+    astroaccelerate::fdas_gpuarrays_float gpuarrays_float;
     astroaccelerate::fdas_cufftplan fftplans;
     //float *acc_signal = NULL;
     struct timeval t_start, t_end;
@@ -158,6 +159,14 @@ namespace astroaccelerate {
 	size_t mem_max_list_size = params.max_list_length*4*sizeof(__nv_bfloat16);
 	size_t mem_signals = (params.nsamps * sizeof(__nv_bfloat16)) + (params.siglen * sizeof(__nv_bfloat162)) + (params.extlen * sizeof(__nv_bfloat162));
 
+	//memory required for float gpu_arrays
+	size_t mem_ffdot_float = params.ffdotlen * sizeof(float); // total size of ffdot plane powers in bytes
+	size_t mem_ffdot_cpx_float = params.ffdotlen_cpx * sizeof(float2); // total size of ffdot plane powers in bytes
+	size_t mem_kern_array_float = KERNLEN * NKERN * sizeof(float2);
+	size_t mem_max_list_size_float = params.max_list_length*4*sizeof(float);
+	size_t mem_signals_float = (params.nsamps * sizeof(float)) + (params.siglen * sizeof(float2)) + (params.extlen * sizeof(float2));
+
+
 	//Determining memory usage
 	size_t mem_tot_needed = 0;
 	double gbyte = 1024.0 * 1024.0 * 1024.0;
@@ -165,7 +174,7 @@ namespace astroaccelerate {
 	size_t mfree, mtotal;
 
 	if (cmdargs.basic)
-	  mem_tot_needed = mem_ffdot + mem_ffdot_cpx + mem_kern_array + mem_signals + mem_max_list_size; // KA added + mem_max_list_size
+	  mem_tot_needed = mem_ffdot + mem_ffdot_cpx + mem_kern_array + mem_signals + mem_max_list_size + mem_ffdot_float + mem_ffdot_cpx_float + mem_kern_array_float + mem_signals_float + mem_max_list_size_float; // KA added + mem_max_list_size
 	if (cmdargs.kfft)
 	  mem_tot_needed = mem_ffdot + mem_kern_array + mem_signals + mem_max_list_size; // KA added + mem_max_list_size
 	cudaError_t e = cudaMemGetInfo(&mfree, &mtotal);
@@ -177,6 +186,8 @@ namespace astroaccelerate {
 	// get available memory info
 	printf( "Total memory for this device: %.2f GB\nAvailable memory on this device for data upload: %.2f GB \n", mtotal / gbyte, mfree / gbyte);
 
+	printf("SIZE OF BFLOAT %zu, SIZE OF FLOAT %zu\n",sizeof(__nv_bfloat16), sizeof(float));
+
 	//Allocating gpu arrays
 	gpuarrays.mem_insig = params.nsamps * sizeof(__nv_bfloat16);
 	gpuarrays.mem_rfft = params.rfftlen * sizeof(__nv_bfloat162);
@@ -185,6 +196,14 @@ namespace astroaccelerate {
 	gpuarrays.mem_ffdot_cpx = mem_ffdot_cpx;
 	gpuarrays.mem_ipedge = params.nblocks * 2;
 	gpuarrays.mem_max_list_size = mem_max_list_size;
+
+	gpuarrays_float.mem_insig = params.nsamps * sizeof(float);
+	gpuarrays_float.mem_rfft = params.rfftlen * sizeof(float2);
+	gpuarrays_float.mem_extsig = params.extlen * sizeof(float2);
+	gpuarrays_float.mem_ffdot = mem_ffdot_float;
+	gpuarrays_float.mem_ffdot_cpx = mem_ffdot_cpx_float;
+	gpuarrays_float.mem_ipedge = params.nblocks * 2;
+	gpuarrays_float.mem_max_list_size = mem_max_list_size_float;
 
 	printf("Total memory needed on GPU for arrays to process 1 DM: %.4f GB\nfloat ffdot plane (for power spectrum) = %.4f GB.\nTemplate array %.4f GB\nOne dimensional signals %.4f\n1 GB = %f",
 	       (double) mem_tot_needed / gbyte, (double) (mem_ffdot) / gbyte, (double) mem_kern_array / gbyte, (double) mem_signals / gbyte, gbyte);
@@ -216,6 +235,7 @@ namespace astroaccelerate {
 	 * }
 	 */
 	fdas_alloc_gpu_arrays(&gpuarrays, &cmdargs);
+	fdas_alloc_gpu_arrays_float(&gpuarrays_float, &cmdargs);
 	//getLastCudaError("\nCuda Error\n");
 
 	// Calculate kernel templates on CPU and upload-fft on GPU
@@ -389,9 +409,11 @@ namespace astroaccelerate {
 	      printf("\n\nConvolution using custom FFT:\nTotal process took: %f ms\n per iteration \nTotal time %d iterations: %f ms\n", t_gpu_i, iter, t_gpu);
 	    }
 #endif */
-/*
+
 	    // Calculating base level noise and peak find
 	    if(cmdargs.basic || cmdargs.kfft){
+
+	      fdas_transfer_gpu_arrays_bfloat16_to_float(&gpuarrays_float,&gpuarrays,&cmdargs);
 	      //------------- Testing BLN
 	      //float signal_mean, signal_sd;
 	      //------------- Testing BLN
@@ -410,22 +432,24 @@ namespace astroaccelerate {
 	      //printf("Dimensions for BLN: ibin:%d; siglen:%d;\n", ibin, params.siglen);
 	      if(NKERN>=32){
 		printf("Block\n");
-		MSD_grid_outlier_rejection(d_MSD, gpuarrays.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
+		MSD_grid_outlier_rejection(d_MSD, gpuarrays_float.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
 	      }
 	      else {
 		printf("Point\n");
-		Find_MSD(d_MSD, gpuarrays.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
+		Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      }
 	      //checkCudaErrors(cudaGetLastError());
 					
 	      //!TEST!: do not perform peak find instead export the thing to file.
+/*
 #ifdef FDAS_CONV_TEST
 	      fdas_write_test_ffdot(&gpuarrays, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      exit(1);
-#endif				
+#endif		
+*/		
 	      //!TEST!: do not perform peak find instead export the thing to file.
 					
-	      PEAK_FIND_FOR_FDAS(gpuarrays.d_ffdot_pwr, gpuarrays.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
+	      PEAK_FIND_FOR_FDAS(gpuarrays_float.d_ffdot_pwr, gpuarrays_float.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
 					
 	      e = cudaMemcpy(h_MSD, d_MSD, 3*sizeof(float), cudaMemcpyDeviceToHost);
 	      
@@ -440,22 +464,22 @@ namespace astroaccelerate {
 	      }
 					
 #ifdef FDAS_ACC_SIG_TEST
-	      fdas_write_list(&gpuarrays, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
-	      fdas_write_ffdot(&gpuarrays, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
+	      fdas_write_list(&gpuarrays_float, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
+	      fdas_write_ffdot(&gpuarrays_float, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      exit(1);
 #endif	
 					
 	      if (enable_output_fdas_list)
 		{
 		  if(list_size>0)
-		    fdas_write_list(&gpuarrays, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
+		    fdas_write_list(&gpuarrays_float, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
 		}
 	      cudaFree(d_MSD);
 	      cudaFree(gmem_fdas_peak_pos);
-	    }*/
+	    }
 	    if (enable_output_ffdot_plan)
 	      {
-		fdas_write_ffdot(&gpuarrays, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
+		fdas_write_ffdot(&gpuarrays_float, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      }
 	    // Call sofias code here pass...
 	    // output_buffer[i][dm_count],
@@ -469,6 +493,7 @@ namespace astroaccelerate {
 	cufftDestroy(fftplans.realplan);
 	cufftDestroy(fftplans.forwardplan);
 	// releasing GPU arrays
+	fdas_free_gpu_arrays_float(&gpuarrays_float, &cmdargs);
 	fdas_free_gpu_arrays(&gpuarrays, &cmdargs);
 
 	/* -- release what has to be released
