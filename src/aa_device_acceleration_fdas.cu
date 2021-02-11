@@ -72,16 +72,16 @@ namespace astroaccelerate {
     cmdargs.thresh = 10.0; //
     cmdargs.freq0 = 100.5; //
     cmdargs.sigamp = 0.1; //
-    cmdargs.basic = 0; //
-    cmdargs.kfft = 1; //
-    if (enable_custom_fft){
+    cmdargs.basic = 1; //
+    cmdargs.kfft = 0; //
+    /*if (enable_custom_fft){
       cmdargs.basic = 0; //
       cmdargs.kfft = 1; //
     }
     else{
       cmdargs.basic = 1; //
       cmdargs.kfft  = 0; //
-    }
+    }*/
     //
     if (enable_inbin)
       cmdargs.inbin = 1; //
@@ -285,39 +285,39 @@ namespace astroaccelerate {
 
 	    //first time PCIe transfer and print timing
 	    gettimeofday(&t_start, NULL); //don't time transfer
-				
+
 	    //!TEST!: put test signal here
 #ifdef FDAS_CONV_TEST
 	    printf("\n************** TEST FOR FDAS ***********************\n");
 	    srand(time(NULL));
 	    for(int f=0; f<processed; f++) output_buffer[i][dm_count][f]=rand() / (float)RAND_MAX;
-				
+
 	    if (processed>15000){
 			for(int f=15000; f<processed; f++){
 				output_buffer[i][dm_count][f] = (f%FDAS_TEST_TOOTH_LENGTH)/500.0;
 			}
-			
+
 	      for(int f=0; f<192; f++){
 		output_buffer[i][dm_count][f + 5300] = 10.0;
 	      }
-					
+
 	      for(int f=0; f<128; f++){
 		output_buffer[i][dm_count][f + 8626] = 10.0;
 	      }
-					
+
 	      for(int f=0; f<36; f++){
 		output_buffer[i][dm_count][f + 9626] = 10.0;
 	      }
-					
+
 	      for(int f=0; f<83; f++){
 		output_buffer[i][dm_count][f + 10626] = 10.0;
 	      }
-					
+
 	      for(int f=0; f<138; f++){
 		output_buffer[i][dm_count][f + 11626] = 10.0;
 	      }
 	    }
-		
+
 		std::ofstream FILEOUT;
 		FILEOUT.open ("acc_conv_test_input_signal.dat", std::ofstream::out);
 		for(int f=0; f<processed; f++){
@@ -325,33 +325,33 @@ namespace astroaccelerate {
 		}
 		FILEOUT.close();
 #endif
-				
+
 #ifdef FDAS_ACC_SIG_TEST
 	    double acc_sig_snr = 1.0;
 	    fdas_new_acc_sig acc_sig;
-				
+
 	    acc_sig.freq0 = FDAS_TEST_FREQUENCY;
 	    acc_sig.nsamps = processed;
 	    acc_sig.zval = FDAS_TEST_ZVALUE;
 	    acc_sig.nharms = FDAS_TEST_HAMONICS;
 	    acc_sig.duty = FDAS_TEST_DUTY_CYCLE/100.0;
 	    acc_sig.sigamp = FDAS_TEST_SIGNAL_AMPLITUDE;
-				
+
 	    double t0, tau;
 	    double omega = 2*M_PI*acc_sig.freq0;
 	    double accel;
 	    double tobs;
 	    double sampling_rate = 0.000064;
 	    double light_speed = 2.99792458e8;
-				
+
 	    tobs = (double) (sampling_rate*acc_sig.nsamps);
 	    accel = ((double)acc_sig.zval * light_speed) / (acc_sig.freq0*tobs*tobs);
 	    printf("\n\npreparing test signal, observation time = %f s, %d nsamps f0 = %f Hz with %d harmonics\n", tobs, acc_sig.nsamps, acc_sig.freq0, acc_sig.nharms);
 	    printf("\nz = %d accelereation = %f m/s^2\n", acc_sig.zval, accel);
-				
+
 	    printf("\nNow creating accelerated signal with fc=%f, accel=%f, harmonics=%d, duty cycle=%.1f, noise=%f signal samples=%d, signal level: %.2f\n", acc_sig.freq0, accel, acc_sig.nharms, acc_sig.duty*100.0, acc_sig_snr, acc_sig.nsamps,acc_sig.sigamp);
-				
-	    for ( int sd=0; sd<acc_sig.nsamps; ++sd){	    
+
+	    for ( int sd=0; sd<acc_sig.nsamps; ++sd){
 	      t0 = sd*sampling_rate;
 	      tau = t0 + (t0*(accel*t0) / light_speed /2.0);
 	      if (acc_sig_snr!=0){
@@ -361,11 +361,15 @@ namespace astroaccelerate {
 		output_buffer[i][dm_count][sd] += (2.0/(j*M_PI)*sin(j*M_PI*acc_sig.duty))*acc_sig.sigamp*cos(j*omega*tau); 
 	      }
 	    }
-				
 #endif
 	    //!TEST!: put test signal here
-				
-	    e = cudaMemcpy(gpuarrays.d_in_signal, output_buffer[i][dm_count], processed*sizeof(__nv_bfloat16), cudaMemcpyHostToDevice);
+
+	    __nv_bfloat16 *bfloat_output_buffer = (__nv_bfloat16*)malloc(processed*sizeof(__nv_bfloat16));
+	    for (int j = 0; j<processed; j++){
+	    	bfloat_output_buffer[j] = (__nv_bfloat16)output_buffer[i][dm_count][j];
+	    }
+
+	    e = cudaMemcpy(gpuarrays.d_in_signal, bfloat_output_buffer, processed*sizeof(__nv_bfloat16), cudaMemcpyHostToDevice);
 
 	    if(e != cudaSuccess) {
 	      LOG(log_level::error, "Could not cudaMemcpy in aa_device_acceleration.cu (" + std::string(cudaGetErrorString(e)) + ")");

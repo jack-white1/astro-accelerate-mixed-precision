@@ -61,6 +61,14 @@ namespace astroaccelerate {
   /** \brief Kernel wrapper function for customfft_fwd_temps_no_reorder kernel function. */
   void call_kernel_customfft_fwd_temps_no_reorder(__nv_bfloat162 *const d_signal);
 
+  void call_kernel_cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes);
+
+  __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes);
+
+  void call_kernel_cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes);
+
+  __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes);
+
 } // namespace astroaccelerate
   
 #endif // ASTRO_ACCELERATE_AA_FDAS_DEVICE_HPP

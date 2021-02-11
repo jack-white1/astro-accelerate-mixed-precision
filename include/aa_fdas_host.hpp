@@ -49,23 +49,23 @@ namespace astroaccelerate {
    * \brief Struct to hold the device data.
    */
   typedef struct{
-    float* d_in_signal; 
-    __nv_bfloat162* d_fft_signal;
+    float           *d_in_signal;
+    __nv_bfloat162  *d_fft_signal;
     __nv_bfloat162  *d_ext_data;
-    __nv_bfloat162 *d_kernel;
-    float2 *temp_kernel; //pointer to intermediate (single precision) kernel
-    __nv_bfloat16 *d_ffdot_pwr;
-    float *d_ffdot_summed;
-    __nv_bfloat162 *d_ffdot_cpx;
-    float2 *ip_edge_points;// edge points for interbinning in kfft
-    float *d_fdas_peak_list; // added by KA
-    size_t mem_insig;
-    size_t mem_rfft;
-    size_t mem_extsig;
-    size_t mem_ffdot;
-    size_t mem_ffdot_cpx;
-    size_t mem_ipedge; // edge points for interbinning in kfft
-    size_t mem_max_list_size; // maximum length of candate list in bytes added by KA
+    __nv_bfloat162  *d_kernel;
+    __nv_bfloat16   *d_ffdot_pwr;
+    float           *d_ffdot_summed;
+    __nv_bfloat162  *d_ffdot_cpx;
+    float2          *ip_edge_points;// edge points for interbinning in kfft
+    float           *d_fdas_peak_list; // added by KA
+    size_t          mem_insig;
+    size_t          mem_rfft;
+    size_t          mem_extsig;
+    size_t          mem_ffdot;
+    size_t          mem_ffdot_cpx;
+    size_t          mem_ipedge; // edge points for interbinning in kfft
+    size_t          mem_max_list_size; // maximum length of candate list in bytes added by KA
+    float2          *temp_kernel; //pointer to intermediate (single precision) kernel
   }fdas_gpuarrays;
 
     /**
@@ -73,15 +73,15 @@ namespace astroaccelerate {
    * \brief Struct to hold the device data in float form.
    */
   typedef struct{
-    float* d_in_signal; 
-    float2* d_fft_signal;
-    float2  *d_ext_data;
-    float2 *d_kernel;
-    float *d_ffdot_pwr;
-    float *d_ffdot_summed;
-    float2 *d_ffdot_cpx;
-    float2 *ip_edge_points;// edge points for interbinning in kfft
-    float *d_fdas_peak_list; // added by KA
+    float     *d_in_signal;
+    float2    *d_fft_signal;
+    float2    *d_ext_data;
+    float2    *d_kernel;
+    float     *d_ffdot_pwr;
+    float     *d_ffdot_summed;
+    float2    *d_ffdot_cpx;
+    float2    *ip_edge_points;// edge points for interbinning in kfft
+    float     *d_fdas_peak_list; // added by KA
     size_t mem_insig;
     size_t mem_rfft;
     size_t mem_extsig;
@@ -154,9 +154,13 @@ namespace astroaccelerate {
 
   void fdas_transfer_gpu_arrays_bfloat16_to_float(fdas_gpuarrays_float *out_arrays, fdas_gpuarrays *in_arrays, cmd_args *cmdargs);
 
-  cudaError_t deep_convert_bfloat162_to_float2(float2 *dest_ptr, __nv_bfloat162 *source_ptr, size_t source_len);
+  //cudaError_t deep_convert_bfloat162_to_float2(float2 *dest_ptr, __nv_bfloat162 *source_ptr, size_t source_len);
 
-  cudaError_t deep_convert_bfloat16_to_float(float *dest_ptr, __nv_bfloat16 *source_ptr, size_t source_len);
+  //cudaError_t deep_convert_bfloat16_to_float(float *dest_ptr, __nv_bfloat16 *source_ptr, size_t source_len);
+
+  cudaError_t fast_cast_bfloat16_to_float(float *dest_ptr, __nv_bfloat16 *source_ptr, size_t source_len);
+
+  cudaError_t fast_cast_bfloat162_to_float2(float2 *dest_ptr, __nv_bfloat162 *source_ptr, size_t source_len);
 
 } // namespace astroaccelerate
   
