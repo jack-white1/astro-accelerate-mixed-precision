@@ -87,7 +87,7 @@ namespace astroaccelerate {
 
     //ffdot planes
     e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot );
-
+    printf("!!!!!!!MEM_FFDOT IN BFLOAT ALLOC: %zu\n",arrays->mem_ffdot);
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
@@ -198,7 +198,7 @@ namespace astroaccelerate {
 
     //ffdot planes
     e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot );
-
+    printf("!!!!!!!MEM_FFDOT IN FLOAT ALLOC: %zu\n",arrays->mem_ffdot);
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
@@ -251,22 +251,41 @@ namespace astroaccelerate {
   {
     printf("\nTransferring gpu arrays:\n"); 
 
-    cudaError_t e = cudaMemcpy((void*)out_arrays->d_in_signal, (const void*)in_arrays->d_in_signal, in_arrays->mem_insig, cudaMemcpyDeviceToDevice);
+    //cudaError_t e = cudaMemcpy((void*)out_arrays->d_in_signal, (const void*)in_arrays->d_in_signal, in_arrays->mem_insig, cudaMemcpyDeviceToDevice);
 
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_fft_signal, in_arrays->d_fft_signal, out_arrays->mem_rfft/2);
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_ext_data, in_arrays->d_ext_data,out_arrays->mem_extsig/2);
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_kernel, in_arrays->d_kernel,KERNLEN*sizeof(__nv_bfloat162)*NKERN);
+    call_kernel_cast_bfloat162_to_float2(out_arrays->d_fft_signal, in_arrays->d_fft_signal, in_arrays->mem_rfft);
+    call_kernel_cast_bfloat162_to_float2(out_arrays->d_ext_data, in_arrays->d_ext_data, in_arrays->mem_extsig);
+    call_kernel_cast_bfloat162_to_float2(out_arrays->d_kernel, in_arrays->d_kernel, KERNLEN*sizeof(__nv_bfloat162)*NKERN);
+    call_kernel_cast_bfloat162_to_float2(out_arrays->d_ffdot_cpx, in_arrays->d_ffdot_cpx, in_arrays->mem_ffdot_cpx);
 
-    cudaMemset(out_arrays->d_ffdot_pwr, 0, out_arrays->mem_ffdot);
-    call_kernel_cast_bfloat16_to_float(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr,out_arrays->mem_ffdot/2);
-    
-    if(cmdargs->basic==1){
-      call_kernel_cast_bfloat162_to_float2(out_arrays->d_ffdot_cpx, in_arrays->d_ffdot_cpx, in_arrays->mem_ffdot_cpx);
-    }
+    printf("!!!!!!!MEM_FFDOT IN TRANSFER: %zu\n",in_arrays->mem_ffdot);
+
+    call_kernel_cast_bfloat16_to_float(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
+                     compare_1D_arrays(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
 
     printf("\nMemory transfer finished\n");
   }
 
+void compare_host_1D_arrays(float* h_float_array, __nv_bfloat16* h_bfloat16_array, size_t data_length_bytes){
+  for (unsigned long i = 0; i<data_length_bytes/sizeof(__nv_bfloat16); i++){
+    printf("bfloat16: %f, float: %f, difference: %f\n",(float)h_bfloat16_array[(int)i],(float)h_float_array[(int)i],(float)h_bfloat16_array[(int)i]-(float)h_float_array[(int)i]);
+  }
+}
+
+void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, size_t data_length_bytes){
+  __nv_bfloat16 *h_bfloat16_array;
+  float *h_float_array;
+  
+  h_bfloat16_array =  (__nv_bfloat16*)  malloc(data_length_bytes);
+  h_float_array =     (float*)          malloc(data_length_bytes*2);
+
+  cudaMemcpy((void*)h_bfloat16_array, (void*)d_bfloat16_array,  data_length_bytes,    cudaMemcpyDeviceToHost);
+  cudaMemcpy((void*)h_float_array,    (void*)d_float_array,     data_length_bytes*2,  cudaMemcpyDeviceToHost);
+
+
+
+  //compare_host_1D_arrays(h_float_array, h_bfloat16_array, data_length_bytes);
+}
 
 
 
@@ -416,6 +435,7 @@ namespace astroaccelerate {
     for (int i=0; i<KERNLEN*NKERN; i++){
       host_bfloat16_kernel[i].x = (__nv_bfloat16)host_float_kernel[i].x;
       host_bfloat16_kernel[i].y = (__nv_bfloat16)host_float_kernel[i].y;
+      //printf("bfloat16.x: %f, bfloat16.y: %f, float.x: %f, float.y:%f\n",(float)host_bfloat16_kernel[i].x, (float)host_bfloat16_kernel[i].y, host_float_kernel[i].x, host_float_kernel[i].y );
     }
 
     //copy bfloat kernels back to GPU at d_kernel
@@ -797,6 +817,7 @@ namespace astroaccelerate {
   }
 #endif
 */
+
   /** \brief Write fdas list to disk. */
   void fdas_write_list(fdas_gpuarrays_float *gpuarrays, cmd_args *cmdargs, fdas_params *params, float *h_MSD, float dm_low, int dm_count, float dm_step, unsigned int list_size){
     printf("FDAS_WRITE_LIST CALLED\n");

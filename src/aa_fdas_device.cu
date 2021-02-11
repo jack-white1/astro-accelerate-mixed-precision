@@ -1209,31 +1209,31 @@ namespace astroaccelerate {
 
 
 void call_kernel_cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes){
-  int N_threads = 1024;
-  int threads_per_block = 256;
-  size_t data_length_per_thread = data_length_bytes/N_threads;
+  int N_threads = 1;
+  int threads_per_block = 1;
+  size_t data_length_per_thread = (size_t)(((int)data_length_bytes)/N_threads);
   cast_bfloat16_to_float<<<N_threads/threads_per_block, threads_per_block>>>(d_output, d_input, data_length_per_thread);
 }
 
 __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes){
-  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = 0; i < (int) data_length_bytes/sizeof(__nv_bfloat16); i++){
-    d_output[idx + i] = (float) d_input[idx+i];
+    d_output[idx + i] = (float) (d_input[idx+i]);
   }
 }
 
 void call_kernel_cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes){
-  int N_threads = 1024;
-  int threads_per_block = 256;
-  size_t data_length_per_thread = data_length_bytes/N_threads;
+  int N_threads = 1;
+  int threads_per_block = 1;
+  size_t data_length_per_thread = (size_t)(((int)data_length_bytes)/N_threads);
   cast_bfloat162_to_float2<<<N_threads/threads_per_block, threads_per_block>>>(d_output, d_input, data_length_per_thread);
 }
 
 __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes){
-  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = 0; i < (int) data_length_bytes/sizeof(__nv_bfloat162); i++){
-    d_output[idx + i].x = (float) d_input[idx+i].x;
-    d_output[idx + i].y = (float) d_input[idx+i].y;
+    d_output[idx + i].x = (float) (d_input[idx+i].x);
+    d_output[idx + i].y = (float) (d_input[idx+i].y);
   }
 }
 

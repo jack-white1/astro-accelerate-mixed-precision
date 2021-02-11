@@ -154,6 +154,7 @@ namespace astroaccelerate {
 
 	//memory required
 	size_t mem_ffdot = params.ffdotlen * sizeof(__nv_bfloat16); // total size of ffdot plane powers in bytes
+	printf("!!!!!!!!!MEM_FFDOT BFLOAT = %zu",mem_ffdot);
 	size_t mem_ffdot_cpx = params.ffdotlen_cpx * sizeof(__nv_bfloat162); // total size of ffdot plane powers in bytes
 	size_t mem_kern_array = KERNLEN * NKERN * sizeof(__nv_bfloat162);
 	size_t mem_max_list_size = params.max_list_length*4*sizeof(__nv_bfloat16);
@@ -403,9 +404,9 @@ namespace astroaccelerate {
 	      printf("\nMain: running FDAS with custom fft\n");
 	      gettimeofday(&t_start, NULL); //don't time transfer
 	      fdas_cuda_customfft(&fftplans, &gpuarrays, &cmdargs, &params);
-	      
+
 	      //Same question about fftplans here
-	       
+
 	      cudaDeviceSynchronize();
 	      gettimeofday(&t_end, NULL);
 	      t_gpu = (double) (t_end.tv_sec + (t_end.tv_usec / 1000000.0)  - t_start.tv_sec - (t_start.tv_usec/ 1000000.0)) * 1000.0;
@@ -423,7 +424,7 @@ namespace astroaccelerate {
 	      //------------- Testing BLN
 	      int ibin=1;
 	      if (cmdargs.inbin) ibin=2;
-					
+
 	      unsigned int list_size;
 	      float *d_MSD;
 	      float h_MSD[3];
@@ -431,7 +432,7 @@ namespace astroaccelerate {
 	      unsigned int *gmem_fdas_peak_pos;
 	      if ( cudaSuccess != cudaMalloc((void**) &gmem_fdas_peak_pos, 1*sizeof(int))) printf("Allocation error!\n");
 	      cudaMemset((void*) gmem_fdas_peak_pos, 0, sizeof(int));
-					
+
 
 	      //printf("Dimensions for BLN: ibin:%d; siglen:%d;\n", ibin, params.siglen);
 	      if(NKERN>=32){
@@ -443,36 +444,36 @@ namespace astroaccelerate {
 		Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      }
 	      //checkCudaErrors(cudaGetLastError());
-					
+
 	      //!TEST!: do not perform peak find instead export the thing to file.
 /*
 #ifdef FDAS_CONV_TEST
 	      fdas_write_test_ffdot(&gpuarrays, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      exit(1);
-#endif		
-*/		
+#endif
+*/
 	      //!TEST!: do not perform peak find instead export the thing to file.
-					
+
 	      PEAK_FIND_FOR_FDAS(gpuarrays_float.d_ffdot_pwr, gpuarrays_float.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
-					
+
 	      e = cudaMemcpy(h_MSD, d_MSD, 3*sizeof(float), cudaMemcpyDeviceToHost);
-	      
+
 	      if(e != cudaSuccess) {
 		LOG(log_level::error, "Could not cudaMemcpy in aa_device_acceleration_fdas.cu (" + std::string(cudaGetErrorString(e)) + ")");
 	      }
-	      
+
 	      e = cudaMemcpy(&list_size, gmem_fdas_peak_pos, sizeof(unsigned int), cudaMemcpyDeviceToHost);
-	      
+
 	      if(e != cudaSuccess) {
 		LOG(log_level::error, "Could not cudaMemcpy in aa_device_acceleration_fdas.cu (" + std::string(cudaGetErrorString(e)) + ")");
 	      }
-					
+
 #ifdef FDAS_ACC_SIG_TEST
 	      fdas_write_list(&gpuarrays_float, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
 	      fdas_write_ffdot(&gpuarrays_float, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      exit(1);
-#endif	
-					
+#endif
+
 	      if (enable_output_fdas_list)
 		{
 		  if(list_size>0)

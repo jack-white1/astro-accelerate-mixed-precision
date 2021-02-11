@@ -49,7 +49,7 @@ namespace astroaccelerate {
    * \brief Struct to hold the device data.
    */
   typedef struct{
-    float           *d_in_signal;
+    __nv_bfloat16           *d_in_signal;
     __nv_bfloat162  *d_fft_signal;
     __nv_bfloat162  *d_ext_data;
     __nv_bfloat162  *d_kernel;
@@ -161,6 +161,10 @@ namespace astroaccelerate {
   cudaError_t fast_cast_bfloat16_to_float(float *dest_ptr, __nv_bfloat16 *source_ptr, size_t source_len);
 
   cudaError_t fast_cast_bfloat162_to_float2(float2 *dest_ptr, __nv_bfloat162 *source_ptr, size_t source_len);
+
+  void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, size_t data_length_bytes);
+
+  void compare_host_1D_arrays(float* h_float_array, __nv_bfloat16* h_bfloat16_array, size_t data_length_bytes);
 
 } // namespace astroaccelerate
   
