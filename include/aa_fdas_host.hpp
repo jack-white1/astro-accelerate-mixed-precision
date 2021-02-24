@@ -126,9 +126,9 @@ namespace astroaccelerate {
 
   void fdas_cuda_check_devices(int devid);
 
-  void fdas_alloc_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs);
+  cudaError_t fdas_alloc_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs);
 
-  void fdas_alloc_gpu_arrays_float(fdas_gpuarrays_float *arrays,  cmd_args *cmdargs);
+  cudaError_t fdas_alloc_gpu_arrays_float(fdas_gpuarrays_float *arrays,  cmd_args *cmdargs);
 
   void fdas_free_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs);
 

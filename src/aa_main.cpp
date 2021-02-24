@@ -70,7 +70,8 @@ int main(int argc, char *argv[]) {
 
 	//Select card
 	int device = 0;
-	aa_device_info selected_device(device);
+	size_t max_mem_size_used = 6442450944;
+	aa_device_info selected_device(device,max_mem_size_used);
 
 	//Why this is here we have already configured the pipeline? Not used later delete?
 	//aa_config configuration(pipeline);   // Set the pipeline and other run settings that would come from an input_file

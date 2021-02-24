@@ -187,7 +187,7 @@ namespace astroaccelerate {
 	// get available memory info
 	printf( "Total memory for this device: %.2f GB\nAvailable memory on this device for data upload: %.2f GB \n", mtotal / gbyte, mfree / gbyte);
 
-	printf("SIZE OF BFLOAT %zu, SIZE OF FLOAT %zu\n",sizeof(__nv_bfloat16), sizeof(float));
+	//printf("SIZE OF BFLOAT %zu, SIZE OF FLOAT %zu\n",sizeof(__nv_bfloat16), sizeof(float));
 
 	//Allocating gpu arrays
 	gpuarrays.mem_insig = params.nsamps * sizeof(__nv_bfloat16);
@@ -235,8 +235,24 @@ namespace astroaccelerate {
 	 * 	   getLastCudaError("\nCuda Error\n");
 	 * }
 	 */
+	
+
+
+
+
+
 	fdas_alloc_gpu_arrays(&gpuarrays, &cmdargs);
+
+	if(e != cudaSuccess) {
+	  LOG(log_level::error, "Could not fdas_alloc_gpu_arrays in aa_device_acceleration_fdas.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	}
+
 	fdas_alloc_gpu_arrays_float(&gpuarrays_float, &cmdargs);
+	
+	if(e != cudaSuccess) {
+	  LOG(log_level::error, "Could not fdas_alloc_gpu_arrays_float in aa_device_acceleration_fdas.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	}
+
 	//getLastCudaError("\nCuda Error\n");
 
 	// Calculate kernel templates on CPU and upload-fft on GPU
@@ -365,12 +381,20 @@ namespace astroaccelerate {
 #endif
 	    //!TEST!: put test signal here
 
-	    __nv_bfloat16 *bfloat_output_buffer = (__nv_bfloat16*)malloc(processed*sizeof(__nv_bfloat16));
+
+
+	    /*__nv_bfloat16 *bfloat_output_buffer = (__nv_bfloat16*)malloc(processed*sizeof(__nv_bfloat16));
 	    for (int j = 0; j<processed; j++){
 	    	bfloat_output_buffer[j] = (__nv_bfloat16)output_buffer[i][dm_count][j];
-	    }
+	    }*/
 
-	    e = cudaMemcpy(gpuarrays.d_in_signal, bfloat_output_buffer, processed*sizeof(__nv_bfloat16), cudaMemcpyHostToDevice);
+	    e = cudaMemcpy(gpuarrays_float.d_in_signal, &output_buffer[i][dm_count], processed*sizeof(float), cudaMemcpyHostToDevice);
+
+	    call_kernel_cast_float_to_bfloat16(gpuarrays.d_in_signal, gpuarrays_float.d_in_signal, processed*sizeof(float) );
+	    compare_1D_arrays(gpuarrays.d_in_signal, gpuarrays_float.d_in_signal, processed*sizeof(float));
+
+
+	    
 
 	    if(e != cudaSuccess) {
 	      LOG(log_level::error, "Could not cudaMemcpy in aa_device_acceleration.cu (" + std::string(cudaGetErrorString(e)) + ")");
@@ -419,6 +443,8 @@ namespace astroaccelerate {
 	    if(cmdargs.basic || cmdargs.kfft){
 
 	      fdas_transfer_gpu_arrays_bfloat16_to_float(&gpuarrays_float,&gpuarrays,&cmdargs);
+	      
+
 	      //------------- Testing BLN
 	      //float signal_mean, signal_sd;
 	      //------------- Testing BLN
@@ -435,14 +461,20 @@ namespace astroaccelerate {
 
 
 	      //printf("Dimensions for BLN: ibin:%d; siglen:%d;\n", ibin, params.siglen);
+	     /*
 	      if(NKERN>=32){
 		printf("Block\n");
+		printf("Calling MSD_grid_outlier_rejection with arguments:\n");
+		printf("float *d_MSD: %p, float *d_input: %p, int CellDim_x: %d, int CellDim_y: %d, int nTimesamples: %d, int nDMs: %d, int offset: %d, float multiplier: %f\n", d_MSD, gpuarrays_float.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
 		MSD_grid_outlier_rejection(d_MSD, gpuarrays_float.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
 	      }
 	      else {
 		printf("Point\n");
 		Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      }
+	      */
+
+	      Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      //checkCudaErrors(cudaGetLastError());
 
 	      //!TEST!: do not perform peak find instead export the thing to file.
@@ -453,9 +485,9 @@ namespace astroaccelerate {
 #endif
 */
 	      //!TEST!: do not perform peak find instead export the thing to file.
-
+	      printf("PEAK_FIND_FOR_FDAS start\n");
 	      PEAK_FIND_FOR_FDAS(gpuarrays_float.d_ffdot_pwr, gpuarrays_float.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
-
+	      printf("PEAK_FIND_FOR_FDAS finish\n");
 	      e = cudaMemcpy(h_MSD, d_MSD, 3*sizeof(float), cudaMemcpyDeviceToHost);
 
 	      if(e != cudaSuccess) {

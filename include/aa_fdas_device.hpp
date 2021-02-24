@@ -55,7 +55,7 @@ namespace astroaccelerate {
 
   /** \brief Kernel wrapper function for GPU_CONV_kFFT_mk11_4elem_2v kernel function. */
   void call_kernel_GPU_CONV_kFFT_mk11_4elem_2v(const dim3 &grid_size, const dim3 &block_size, __nv_bfloat162 const*const d_input_signal, __nv_bfloat16 *const d_output_plane_reduced, __nv_bfloat162 const*const d_templates, const int &useful_part_size, const int &offset, const int &nConvolutions, const float &scale);
-  
+
   __global__ void customfft_fwd_temps_no_reorder(__nv_bfloat162* d_signal);
 
   /** \brief Kernel wrapper function for customfft_fwd_temps_no_reorder kernel function. */
@@ -63,12 +63,20 @@ namespace astroaccelerate {
 
   void call_kernel_cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes);
 
-  __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes);
+  __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input);
 
   void call_kernel_cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes);
 
-  __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes);
+  __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input);
+
+  void call_kernel_cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input, size_t data_length_bytes);
+
+  __global__ void cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input);
+
+  void call_kernel_cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input, size_t data_length_bytes);
+
+  __global__ void cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input);
 
 } // namespace astroaccelerate
-  
+
 #endif // ASTRO_ACCELERATE_AA_FDAS_DEVICE_HPP

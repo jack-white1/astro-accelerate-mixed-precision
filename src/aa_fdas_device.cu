@@ -1205,36 +1205,118 @@ namespace astroaccelerate {
       }
     }
   }
+/*
+void call_kernel_cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input, size_t data_length_bytes){
+  unsigned long long N_threads = 1;
+  unsigned long long threads_per_block = 1;
+  size_t data_length_per_thread = (size_t)(((unsigned long long)data_length_bytes)/N_threads);
+  cast_bfloat16_to_float<<<N_threads/threads_per_block, threads_per_block>>>(d_output, d_input, data_length_per_thread);
+}
 
+__global__ void cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input, size_t data_length_bytes){
+  unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (unsigned long long i = 0; i < (unsigned long long) data_length_bytes/sizeof(float); i++){
+    d_output[idx + i] = (__nv_bfloat16) (d_input[idx+i]);
+  }
+}
 
 
 void call_kernel_cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes){
-  int N_threads = 1;
-  int threads_per_block = 1;
-  size_t data_length_per_thread = (size_t)(((int)data_length_bytes)/N_threads);
+  unsigned long long N_threads = 1;
+  unsigned long long threads_per_block = 1;
+  size_t data_length_per_thread = (size_t)(((unsigned long long)data_length_bytes)/N_threads);
   cast_bfloat16_to_float<<<N_threads/threads_per_block, threads_per_block>>>(d_output, d_input, data_length_per_thread);
 }
 
 __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes){
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = 0; i < (int) data_length_bytes/sizeof(__nv_bfloat16); i++){
+  unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (unsigned long long i = 0; i < (unsigned long long) data_length_bytes/sizeof(__nv_bfloat16); i++){
     d_output[idx + i] = (float) (d_input[idx+i]);
   }
 }
 
 void call_kernel_cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes){
-  int N_threads = 1;
-  int threads_per_block = 1;
-  size_t data_length_per_thread = (size_t)(((int)data_length_bytes)/N_threads);
+  unsigned long long N_threads = 1;
+  unsigned long long threads_per_block = 1;
+  size_t data_length_per_thread = (size_t)(((unsigned long long)data_length_bytes)/N_threads);
   cast_bfloat162_to_float2<<<N_threads/threads_per_block, threads_per_block>>>(d_output, d_input, data_length_per_thread);
 }
 
 __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes){
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = 0; i < (int) data_length_bytes/sizeof(__nv_bfloat162); i++){
+  unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (unsigned long long i = 0; i < (unsigned long long) data_length_bytes/sizeof(__nv_bfloat162); i++){
     d_output[idx + i].x = (float) (d_input[idx+i].x);
     d_output[idx + i].y = (float) (d_input[idx+i].y);
   }
+}
+*/
+
+void call_kernel_cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input, size_t data_length_bytes){
+  int N_threads = 1;
+  unsigned long long N_floats = data_length_bytes/sizeof(float);
+  unsigned long long N_blocks = N_floats/N_threads;
+  double true_N_floats = ((double)data_length_bytes)/((double)sizeof(float));
+  double true_N_blocks = true_N_floats/((double)N_threads);
+
+  printf("Casting float to bfloat16: N_floats: %llu, N_blocks: %llu, true_N_floats: %lf, true_N_blocks: %lf\n", N_floats, N_blocks, true_N_floats, true_N_blocks);
+  cast_float_to_bfloat16<<<N_blocks, N_threads>>>(d_output, d_input);
+}
+
+__global__ void cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input){
+    unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+    d_output[idx] = (__nv_bfloat16) d_input[idx];
+}
+
+void call_kernel_cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input, size_t data_length_bytes){
+  int N_threads = 1;
+  unsigned long long N_float2s = data_length_bytes/sizeof(float2);
+  unsigned long long N_blocks = N_float2s/N_threads;
+  double true_N_floats = ((double)data_length_bytes)/((double)sizeof(float2));
+  double true_N_blocks = true_N_floats/((double)N_threads);
+
+  printf("Casting float2 to bfloat162: N_float2s: %llu, N_blocks: %llu, true_N_float2s: %lf, true_N_blocks: %lf\n", N_float2s, N_blocks, true_N_floats, true_N_blocks);
+
+  cast_float2_to_bfloat162<<<N_blocks, N_threads>>>(d_output, d_input);
+}
+
+__global__ void cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input){
+    unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+    d_output[idx].x = (__nv_bfloat16) d_input[idx].x;
+    d_output[idx].y = (__nv_bfloat16) d_input[idx].y;
+}
+
+
+void call_kernel_cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes){
+  int N_threads = 1;
+  unsigned long long N_floats = data_length_bytes/sizeof(__nv_bfloat16);
+  unsigned long long N_blocks = N_floats/N_threads;
+  double true_N_floats = ((double)data_length_bytes)/((double)sizeof(__nv_bfloat16));
+  double true_N_blocks = true_N_floats/((double)N_threads);
+
+  printf("Casting bfloat16 to float: N_floats: %llu, N_blocks: %llu, true_N_floats: %lf, true_N_blocks: %lf\n", N_floats, N_blocks, true_N_floats, true_N_blocks);
+  cast_bfloat16_to_float<<<N_blocks, N_threads>>>(d_output, d_input);
+}
+
+__global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input){
+    unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+    d_output[idx] = (float) d_input[idx];
+}
+
+void call_kernel_cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes){
+  int N_threads = 1;
+  unsigned long long N_float2s = data_length_bytes/sizeof(__nv_bfloat162);
+  unsigned long long N_blocks = N_float2s/N_threads;
+  double true_N_floats = ((double)data_length_bytes)/((double)sizeof(__nv_bfloat162));
+  double true_N_blocks = true_N_floats/((double)N_threads);
+
+  printf("Casting bfloat162 to float2: N_float2s: %llu, N_blocks: %llu, true_N_float2s: %lf, true_N_blocks: %lf\n", N_float2s, N_blocks, true_N_floats, true_N_blocks);
+  cast_bfloat162_to_float2<<<N_blocks, N_threads>>>(d_output, d_input);
+}
+
+__global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input){
+  unsigned long long idx = blockIdx.x * blockDim.x + threadIdx.x;
+  d_output[idx].x = (float) d_input[idx].x;
+  d_output[idx].y = (float) d_input[idx].y;
 }
 
 /*

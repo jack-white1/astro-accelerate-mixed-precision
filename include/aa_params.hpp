@@ -73,7 +73,7 @@ namespace astroaccelerate {
 
   // Test for FDAS (define it to perform test)
   //#define FDAS_CONV_TEST
-#define FDAS_ACC_SIG_TEST
+  //#define FDAS_ACC_SIG_TEST
 
 #define DIT_YSTEP 2
 #define DIT_ELEMENTS_PER_THREAD 4

@@ -119,19 +119,19 @@ __global__ void peak_find_list2(const float *d_input, const int width, const int
 	dilated_value = dilate4(block);
 	my_value = block.w;
       } else {
-	float3x3 block = load_block_bottom(d_input, idxX, idxY, width);        
+	float3x3 block = load_block_bottom(d_input, idxX, idxY, width);
 	dilated_value = dilate3x3_bottom(block);
 	my_value = block.y2;
       }
       //Left edge
     } else if (idxX == 0) {
-      float3x3 block = load_block_left(d_input, idxX, idxY, width);        
+      float3x3 block = load_block_left(d_input, idxX, idxY, width);
       dilated_value = dilate3x3_left(block);
       my_value = block.y2;
     
       //right edge
     } else if (idxX == (width-offset-1)) {
-      float3x3 block = load_block_right(d_input, idxX, idxY, width);        
+      float3x3 block = load_block_right(d_input, idxX, idxY, width);
       dilated_value = dilate3x3_right(block);
       my_value = block.y2;
 

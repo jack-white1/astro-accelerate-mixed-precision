@@ -42,7 +42,7 @@ namespace astroaccelerate {
   }
 
   /** \brief Allocate GPU arrays for fdas. */
-  void fdas_alloc_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs)
+  cudaError_t fdas_alloc_gpu_arrays(fdas_gpuarrays *arrays,  cmd_args *cmdargs)
   {
     printf("\nAllocating gpu arrays bfloat16:\n"); 
 
@@ -54,14 +54,17 @@ namespace astroaccelerate {
 
     // Memory allocations for gpu real fft input / output signal
     cudaError_t e = cudaMalloc((void**)&arrays->d_in_signal, arrays->mem_insig);
+    cudaError_t e_final = e;
     
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaMalloc((void**)&arrays->d_fft_signal, arrays->mem_rfft);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
@@ -69,6 +72,7 @@ namespace astroaccelerate {
     e = cudaMalloc((void**)&arrays->d_ext_data, arrays->mem_extsig);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
@@ -76,19 +80,21 @@ namespace astroaccelerate {
     e = cudaMalloc((void**)&arrays->d_kernel, KERNLEN*sizeof(__nv_bfloat162)*NKERN );
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaMalloc((void**)&arrays->temp_kernel, KERNLEN*sizeof(float2)*NKERN );
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     //ffdot planes
     e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot );
-    printf("!!!!!!!MEM_FFDOT IN BFLOAT ALLOC: %zu\n",arrays->mem_ffdot);
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
@@ -96,15 +102,19 @@ namespace astroaccelerate {
     e = cudaMemset(arrays->d_ffdot_pwr, 0, arrays->mem_ffdot);
 
     if(e != cudaSuccess) {
+
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     printf("ffdot: %zu, size: %zu, NKERN: %zu\n",(unsigned long)arrays->mem_ffdot,(unsigned long)sizeof(__nv_bfloat16),(unsigned long)NKERN);
     printf("ffdot x size: %lu",(unsigned long)arrays->mem_ffdot/sizeof(__nv_bfloat16)/(unsigned long)NKERN);
     if(cmdargs->basic==1){
+
       e = cudaMalloc(&arrays->d_ffdot_cpx, arrays->mem_ffdot_cpx);
 
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+        e_final = e;
+        LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
       }
     }
 
@@ -113,26 +123,32 @@ namespace astroaccelerate {
       e = cudaMalloc(&arrays->ip_edge_points, arrays->mem_ipedge);
 
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+
+      e_final = e;
+      LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
       }
     }
    
     // Added by KA
-    if ( cudaSuccess != cudaMalloc((void**) &arrays->d_fdas_peak_list, arrays->mem_max_list_size)) printf("Allocation error in FDAS: d_fdas_peak_list\n");
-	
+    if ( cudaSuccess != cudaMalloc((void**) &arrays->d_fdas_peak_list, arrays->mem_max_list_size)){
+      e_final = e;
+      printf("Allocation error in FDAS: d_fdas_peak_list\n");
+	}
     // check allocated/free memory
     size_t mfree,  mtotal;
     e = cudaMemGetInfo ( &mfree, &mtotal );
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemGetInfo in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     printf("\nMemory allocation finished: Total memory for this device: %.2f GB\nAvailable memory left on this device: %.2f GB \n", mtotal/gbyte, mfree/gbyte);
+    return e_final;
   }
 
     /** \brief Allocate GPU arrays for fdas. */
-  void fdas_alloc_gpu_arrays_float(fdas_gpuarrays_float *arrays,  cmd_args *cmdargs)
+  cudaError_t fdas_alloc_gpu_arrays_float(fdas_gpuarrays_float *arrays,  cmd_args *cmdargs)
   {
     printf("\nAllocating gpu arrays float:\n"); 
 
@@ -144,14 +160,17 @@ namespace astroaccelerate {
 
     // Memory allocations for gpu real fft input / output signal
     cudaError_t e = cudaMalloc((void**)&arrays->d_in_signal, arrays->mem_insig);
+    cudaError_t e_final = e;
     
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaMemset(arrays->d_in_signal, 0, arrays->mem_insig);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
@@ -159,12 +178,14 @@ namespace astroaccelerate {
 
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaMemset(arrays->d_fft_signal, 0, arrays->mem_rfft);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
@@ -173,12 +194,14 @@ namespace astroaccelerate {
 
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaMemset(arrays->d_ext_data, 0, arrays->mem_extsig);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
@@ -187,12 +210,14 @@ namespace astroaccelerate {
 
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaMemset(arrays->d_kernel, 0, KERNLEN*sizeof(float2)*NKERN);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
@@ -200,6 +225,7 @@ namespace astroaccelerate {
     e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot );
     printf("!!!!!!!MEM_FFDOT IN FLOAT ALLOC: %zu\n",arrays->mem_ffdot);
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
@@ -207,6 +233,7 @@ namespace astroaccelerate {
     e = cudaMemset(arrays->d_ffdot_pwr, 0, arrays->mem_ffdot);
 
     if(e != cudaSuccess) {
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemset in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     printf("ffdot: %zu, size: %zu, NKERN: %zu\n",(unsigned long)arrays->mem_ffdot,(unsigned long)sizeof(float),(unsigned long)NKERN);
@@ -215,6 +242,8 @@ namespace astroaccelerate {
       e = cudaMalloc(&arrays->d_ffdot_cpx, arrays->mem_ffdot_cpx);
       e = cudaMemset(arrays->d_ffdot_cpx, 0, arrays->mem_ffdot_cpx);
       if(e != cudaSuccess) {
+
+      e_final = e;
   LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
       }
     }
@@ -233,6 +262,7 @@ namespace astroaccelerate {
     e = cudaMemset(arrays->d_fdas_peak_list, 0, arrays->mem_max_list_size);
     // Added by KA
     if ( cudaSuccess != e ){
+      e_final = e;
       printf("Allocation error in FDAS: d_fdas_peak_list\n");
     }
     // check allocated/free memory
@@ -240,35 +270,35 @@ namespace astroaccelerate {
     e = cudaMemGetInfo ( &mfree, &mtotal );
 
     if(e != cudaSuccess) {
+
+      e_final = e;
       LOG(log_level::error, "Could not cudaMemGetInfo in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     printf("\nMemory allocation finished: Total memory for this device: %.2f GB\nAvailable memory left on this device: %.2f GB \n", mtotal/gbyte, mfree/gbyte);
+    return e_final;
   }
 
 
   void fdas_transfer_gpu_arrays_bfloat16_to_float(fdas_gpuarrays_float *out_arrays, fdas_gpuarrays *in_arrays, cmd_args *cmdargs)
   {
-    printf("\nTransferring gpu arrays:\n"); 
+    printf("\nCopying + converting gpu arrays (only d_ffdot_pwr) from bfloat16 into float, \n");
 
-    //cudaError_t e = cudaMemcpy((void*)out_arrays->d_in_signal, (const void*)in_arrays->d_in_signal, in_arrays->mem_insig, cudaMemcpyDeviceToDevice);
-
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_fft_signal, in_arrays->d_fft_signal, in_arrays->mem_rfft);
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_ext_data, in_arrays->d_ext_data, in_arrays->mem_extsig);
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_kernel, in_arrays->d_kernel, KERNLEN*sizeof(__nv_bfloat162)*NKERN);
-    call_kernel_cast_bfloat162_to_float2(out_arrays->d_ffdot_cpx, in_arrays->d_ffdot_cpx, in_arrays->mem_ffdot_cpx);
-
-    printf("!!!!!!!MEM_FFDOT IN TRANSFER: %zu\n",in_arrays->mem_ffdot);
-
+    //call_kernel_cast_bfloat162_to_float2(out_arrays->d_fft_signal, in_arrays->d_fft_signal, in_arrays->mem_rfft);
+    //call_kernel_cast_bfloat162_to_float2(out_arrays->d_ext_data, in_arrays->d_ext_data, in_arrays->mem_extsig);
+    //call_kernel_cast_bfloat162_to_float2(out_arrays->d_kernel, in_arrays->d_kernel, KERNLEN*sizeof(__nv_bfloat162)*NKERN);
+    //call_kernel_cast_bfloat162_to_float2(out_arrays->d_ffdot_cpx, in_arrays->d_ffdot_cpx, in_arrays->mem_ffdot_cpx);
     call_kernel_cast_bfloat16_to_float(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
-                     compare_1D_arrays(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
 
-    printf("\nMemory transfer finished\n");
+    printf("\nComparison of d_ffdot_pwr before and after conversion: \n");
+    compare_1D_arrays(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
+
+    printf("GPU array copy/conversion to single precision from bfloat16 completed\n");
   }
 
 void compare_host_1D_arrays(float* h_float_array, __nv_bfloat16* h_bfloat16_array, size_t data_length_bytes){
   for (unsigned long i = 0; i<data_length_bytes/sizeof(__nv_bfloat16); i++){
-    printf("bfloat16: %f, float: %f, difference: %f\n",(float)h_bfloat16_array[(int)i],(float)h_float_array[(int)i],(float)h_bfloat16_array[(int)i]-(float)h_float_array[(int)i]);
+    printf("d_ffdot_pwr[%lu] =    bfloat16: %f, float: %f, difference: %f\n",i,(float)h_bfloat16_array[(int)i],(float)h_float_array[(int)i],(float)h_bfloat16_array[(int)i]-(float)h_float_array[(int)i]);
   }
 }
 
@@ -282,9 +312,7 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
   cudaMemcpy((void*)h_bfloat16_array, (void*)d_bfloat16_array,  data_length_bytes,    cudaMemcpyDeviceToHost);
   cudaMemcpy((void*)h_float_array,    (void*)d_float_array,     data_length_bytes*2,  cudaMemcpyDeviceToHost);
 
-
-
-  //compare_host_1D_arrays(h_float_array, h_bfloat16_array, data_length_bytes);
+  compare_host_1D_arrays(h_float_array, h_bfloat16_array, data_length_bytes);
 }
 
 
@@ -297,44 +325,44 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
     cudaError_t e = cudaFree(arrays->d_in_signal);
     
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 1 (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     e = cudaFree(arrays->d_fft_signal);
 
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 2 (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     e = cudaFree(arrays->d_ext_data);
 
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 3 (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     e = cudaFree(arrays->d_ffdot_pwr);
 
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 4 (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     e = cudaFree(arrays->d_kernel);
 
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 5 (" + std::string(cudaGetErrorString(e)) + ")");
     }
 
     e = cudaFree(arrays->temp_kernel);
 
     if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+      LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 6 (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     if(cmdargs->basic) {
       e = cudaFree(arrays->d_ffdot_cpx);
       
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 7 (" + std::string(cudaGetErrorString(e)) + ")");
       } 
     }
 
@@ -342,7 +370,7 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
       e = cudaFree(arrays->ip_edge_points);
       
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	LOG(log_level::error, "Could not cudaFree in aa_fdas_host.cu 8 (" + std::string(cudaGetErrorString(e)) + ")");
       } 
     }
 	
@@ -414,40 +442,41 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
   void fdas_create_bfloat_acc_kernels(__nv_bfloat162* d_kernel, float2* temp_kernel_pointer, cmd_args *cmdargs) {
 
     //allocate sufficient memory for kernels
-    cufftComplex *host_float_kernel = (float2*) malloc(NKERN*KERNLEN*sizeof(float2));
-    __nv_bfloat162 *host_bfloat16_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
+    //cufftComplex *host_float_kernel = (float2*) malloc(NKERN*KERNLEN*sizeof(float2));
+    //__nv_bfloat162 *host_bfloat16_kernel = (__nv_bfloat162*) malloc(NKERN*KERNLEN*sizeof(__nv_bfloat162));
     
     //use existing function to create single precision kernels at temp_kernel_pointer
     fdas_create_acc_kernels(temp_kernel_pointer, cmdargs);
+    call_kernel_cast_float2_to_bfloat162(d_kernel, temp_kernel_pointer,KERNLEN*sizeof(float2)* NKERN);
 
     //retrieve kernels from device and put them at host_float_kernel
-    cudaError_t e = cudaMemcpy(host_float_kernel, temp_kernel_pointer, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyDeviceToHost);
+    //cudaError_t e = cudaMemcpy(host_float_kernel, temp_kernel_pointer, KERNLEN*sizeof(float2)* NKERN, cudaMemcpyDeviceToHost);
     
-    if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_bfloat_acc_kernels() D2H (" + std::string(cudaGetErrorString(e)) + ")");
-    }
+    //if(e != cudaSuccess) {
+      //LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_bfloat_acc_kernels() D2H (" + std::string(cudaGetErrorString(e)) + ")");
+    //}
 
-    cudaFree(temp_kernel_pointer);
+    //cudaFree(temp_kernel_pointer);
 
 
     //need to convert single precision kernels (now on host)
     //to half precision and then copy them back to d_kernel on GPU
-    for (int i=0; i<KERNLEN*NKERN; i++){
-      host_bfloat16_kernel[i].x = (__nv_bfloat16)host_float_kernel[i].x;
-      host_bfloat16_kernel[i].y = (__nv_bfloat16)host_float_kernel[i].y;
+    //for (int i=0; i<KERNLEN*NKERN; i++){
+      //host_bfloat16_kernel[i].x = (__nv_bfloat16)host_float_kernel[i].x;
+      //host_bfloat16_kernel[i].y = (__nv_bfloat16)host_float_kernel[i].y;
       //printf("bfloat16.x: %f, bfloat16.y: %f, float.x: %f, float.y:%f\n",(float)host_bfloat16_kernel[i].x, (float)host_bfloat16_kernel[i].y, host_float_kernel[i].x, host_float_kernel[i].y );
-    }
+    //}
 
     //copy bfloat kernels back to GPU at d_kernel
-    e = cudaMemcpy(d_kernel, host_bfloat16_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice);
+    //e = cudaMemcpy(d_kernel, host_bfloat16_kernel, KERNLEN*sizeof(__nv_bfloat162)* NKERN, cudaMemcpyHostToDevice);
 
-    if(e != cudaSuccess) {
-      LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_bfloat_acc_kernels() H2D (" + std::string(cudaGetErrorString(e)) + ")");
-    }
+    //if(e != cudaSuccess) {
+      //LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu/fdas_create_bfloat_acc_kernels() H2D (" + std::string(cudaGetErrorString(e)) + ")");
+    //}
 
   //free memory on host
-  free(host_float_kernel);
-  free(host_bfloat16_kernel);
+  //free(host_float_kernel);
+  //free(host_bfloat16_kernel);
   }
 
   void fdas_create_acc_kernels(cufftComplex* d_kernel, cmd_args *cmdargs ) {
