@@ -3,7 +3,7 @@
 #include <string>
 #include "aa_log.hpp"
 
-#define MSD_DEBUG
+//#define MSD_DEBUG
 
 // \todo Remove MSD_legacy
 
@@ -358,22 +358,22 @@ int MSD_grid_outlier_rejection(float *d_MSD, float *d_input, int CellDim_x, int 
   cudaMalloc((void **) &d_output, GridSize_x*GridSize_y*3*sizeof(float));
 
   //---------> MSD
-  printf("MSD_init start\n");
+  //printf("MSD_init start\n");
   MSD_init();
-  printf("MSD_init finished\ncall_kernel_MSD_BLN_grid_calculate_partials start\n");
+  //printf("MSD_init finished\ncall_kernel_MSD_BLN_grid_calculate_partials start\n");
   call_kernel_MSD_BLN_grid_calculate_partials(gridSize,blockSize,nThreads*8, d_input, d_output, x_steps, y_steps, nTimesamples, 0);
 
   cudaError_t e = cudaDeviceSynchronize();
   if (e != cudaSuccess) {
     printf("cudaDeviceSynchronize failure in MSD_grid_outlier_rejection\n");
   }
-  printf("call_kernel_MSD_BLN_grid_calculate_partials finished\ncall_kernel_MSD_BLN_grid_outlier_rejection start\n");
+  //printf("call_kernel_MSD_BLN_grid_calculate_partials finished\ncall_kernel_MSD_BLN_grid_outlier_rejection start\n");
   call_kernel_MSD_BLN_grid_outlier_rejection(final_gridSize, final_blockSize, d_output, d_MSD, GridSize_x*GridSize_y, (float) (CellDim_x*CellDim_y), multiplier);
   e = cudaDeviceSynchronize();
   if (e != cudaSuccess) {
     printf("cudaDeviceSynchronize failure in MSD_grid_outlier_rejection\n");
   }
-  printf("call_kernel_MSD_BLN_grid_outlier_rejection finished\n");
+  //printf("call_kernel_MSD_BLN_grid_outlier_rejection finished\n");
 
   //---------> De-allocation of temporary memory
   printf("cudaFree start\n");

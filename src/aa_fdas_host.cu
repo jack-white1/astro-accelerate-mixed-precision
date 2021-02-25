@@ -110,7 +110,7 @@ namespace astroaccelerate {
     printf("ffdot x size: %lu",(unsigned long)arrays->mem_ffdot/sizeof(__nv_bfloat16)/(unsigned long)NKERN);
     if(cmdargs->basic==1){
 
-      e = cudaMalloc(&arrays->d_ffdot_cpx, arrays->mem_ffdot_cpx);
+      e = cudaMalloc((void**)&arrays->d_ffdot_cpx, arrays->mem_ffdot_cpx);
 
       if(e != cudaSuccess) {
         e_final = e;
@@ -120,7 +120,7 @@ namespace astroaccelerate {
 
     if(cmdargs->kfft && cmdargs->inbin){
       //    printf("mem_ipedge = %u ",mem_ipedge/);
-      e = cudaMalloc(&arrays->ip_edge_points, arrays->mem_ipedge);
+      e = cudaMalloc((void**)&arrays->ip_edge_points, arrays->mem_ipedge);
 
       if(e != cudaSuccess) {
 
@@ -280,25 +280,27 @@ namespace astroaccelerate {
   }
 
 
-  void fdas_transfer_gpu_arrays_bfloat16_to_float(fdas_gpuarrays_float *out_arrays, fdas_gpuarrays *in_arrays, cmd_args *cmdargs)
-  {
-    printf("\nCopying + converting gpu arrays (only d_ffdot_pwr) from bfloat16 into float, \n");
 
     //call_kernel_cast_bfloat162_to_float2(out_arrays->d_fft_signal, in_arrays->d_fft_signal, in_arrays->mem_rfft);
     //call_kernel_cast_bfloat162_to_float2(out_arrays->d_ext_data, in_arrays->d_ext_data, in_arrays->mem_extsig);
     //call_kernel_cast_bfloat162_to_float2(out_arrays->d_kernel, in_arrays->d_kernel, KERNLEN*sizeof(__nv_bfloat162)*NKERN);
     //call_kernel_cast_bfloat162_to_float2(out_arrays->d_ffdot_cpx, in_arrays->d_ffdot_cpx, in_arrays->mem_ffdot_cpx);
+
+  void fdas_transfer_gpu_arrays_bfloat16_to_float(fdas_gpuarrays_float *out_arrays, fdas_gpuarrays *in_arrays, cmd_args *cmdargs)
+  {
+    //printf("\nCopying + converting gpu arrays (only d_ffdot_pwr) from bfloat16 into float, \n");
+
     call_kernel_cast_bfloat16_to_float(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
 
-    printf("\nComparison of d_ffdot_pwr before and after conversion: \n");
-    compare_1D_arrays(out_arrays->d_ffdot_pwr, in_arrays->d_ffdot_pwr, in_arrays->mem_ffdot);
-
-    printf("GPU array copy/conversion to single precision from bfloat16 completed\n");
+    //printf("GPU array copy/conversion to single precision from bfloat16 completed\n");
   }
 
 void compare_host_1D_arrays(float* h_float_array, __nv_bfloat16* h_bfloat16_array, size_t data_length_bytes){
-  for (unsigned long i = 0; i<data_length_bytes/sizeof(__nv_bfloat16); i++){
-    printf("d_ffdot_pwr[%lu] =    bfloat16: %f, float: %f, difference: %f\n",i,(float)h_bfloat16_array[(int)i],(float)h_float_array[(int)i],(float)h_bfloat16_array[(int)i]-(float)h_float_array[(int)i]);
+  double true_arr_length = data_length_bytes/sizeof(__nv_bfloat16);
+  int arr_length = (int) true_arr_length;
+  printf("\n true_arr_length: %lf\n", true_arr_length);
+  for (int i = 0; i<arr_length; i++){
+    printf("d_in_signal[%d] =    bfloat16: %f, float: %f, difference: %f\n",i,(float)h_bfloat16_array[(int)i],h_float_array[(int)i],(float)h_bfloat16_array[(int)i]-(float)h_float_array[(int)i]);
   }
 }
 
@@ -313,6 +315,31 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
   cudaMemcpy((void*)h_float_array,    (void*)d_float_array,     data_length_bytes*2,  cudaMemcpyDeviceToHost);
 
   compare_host_1D_arrays(h_float_array, h_bfloat16_array, data_length_bytes);
+}
+
+void print_1D_bfloat16_array(__nv_bfloat16* d_bfloat16_array, size_t data_length_bytes){
+  __nv_bfloat16 *h_bfloat16_array;
+
+  h_bfloat16_array =  (__nv_bfloat16*)  malloc(data_length_bytes);
+
+  cudaMemcpy((void*)h_bfloat16_array, (void*)d_bfloat16_array,data_length_bytes,cudaMemcpyDeviceToHost);
+
+  for (int i = 0; i < data_length_bytes/sizeof(__nv_bfloat16); i++){
+    printf("%f\n",(float)h_bfloat16_array[i]);
+
+  }
+}
+
+void print_1D_bfloat162_array(__nv_bfloat162* d_bfloat162_array, size_t data_length_bytes){
+  __nv_bfloat162 *h_bfloat162_array;
+
+  h_bfloat162_array =  (__nv_bfloat162*)  malloc(data_length_bytes);
+
+  cudaMemcpy((void*)h_bfloat162_array, (void*)d_bfloat162_array,data_length_bytes,cudaMemcpyDeviceToHost);
+
+  for (int i = 0; i < data_length_bytes/sizeof(__nv_bfloat162); i++){
+    printf("x: %f, y: %f\n",(float)h_bfloat162_array[i].x, (float)h_bfloat162_array[i].y);
+  }
 }
 
 
@@ -575,12 +602,13 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
     printf("\nsignal forward fft plan requires extra  %f MB of memory\n the same plan is used for the inverse fft", sig_worksize / mbyte);
   
     // real plan
-    size_t rworksize;
+    size_t rworksize, sworksize;
     long long int rn[] = {params->nsamps};
     long long int *rinembed = rn, *ronembed = rn;
     long long int ridist = rn[0], rodist = params->rfftlen;
  
     cufftCreate(&fftplans->realplan);
+    printf("\nWHILE MAKING PLANS, RN: %d", params->nsamps);
     e = cufftXtMakePlanMany(fftplans->realplan, nrank, rn, rinembed,
         istride, ridist, CUDA_R_16BF,ronembed, ostride, rodist,
         CUDA_C_16BF, 1, &rworksize,CUDA_C_16BF);
@@ -598,9 +626,9 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
     if(e != CUFFT_SUCCESS) {
       LOG(log_level::error, "Could not cufftCreate in aa_fdas_host.cu");
     }
-    
+    printf("\nWHILE MAKING PLANS, N: %d", KERNLEN);
         e = cufftXtMakePlanMany(fftplans->forwardplan, nrank, n, inembed,istride, idist, CUDA_C_16BF,
-        onembed, ostride, odist,CUDA_C_16BF, params->nblocks, &sig_worksize,CUDA_C_16BF);
+        onembed, ostride, odist,CUDA_C_16BF, params->nblocks, &sworksize,CUDA_C_16BF);
     if(e != CUFFT_SUCCESS) {
       LOG(log_level::error, "Could not cufftMakePlanMany in aa_fdas_host.cu");
     }
@@ -629,11 +657,15 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
     */
     //real fft
 #ifndef FDAS_CONV_TEST
+    //printf("d_in_signal BEFORE CUFFT===========================================================================\n\n\n\n\n\n\n\n\n\n");
+    //print_1D_bfloat16_array(gpuarrays->d_in_signal, 1024);
     if (CUFFT_SUCCESS != cufftXtExec(fftplans->realplan, gpuarrays->d_in_signal, gpuarrays->d_fft_signal,CUFFT_FORWARD)){
       printf("Could not cufftXtExec\n");
     }
+    //printf("d_fft_signal AFTER CUFFT===========================================================================\n\n\n\n\n\n\n\n\n\n");
+    //print_1D_bfloat162_array(gpuarrays->d_fft_signal, 2048);
 #endif
-  
+    
 #ifdef FDAS_CONV_TEST
     __nv_bfloat162 *f2temp;
     __nv_bfloat16 *ftemp;
@@ -680,7 +712,7 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
       
       free(fftsig);
     }*/
-
+    
     //overlap-copy
     call_kernel_cuda_overlap_copy(gpuarrays->d_ext_data, gpuarrays->d_fft_signal, params->sigblock, params->rfftlen, params->extlen, params->offset, params->nblocks );
 
@@ -708,6 +740,8 @@ void compare_1D_arrays(float* d_float_array, __nv_bfloat16* d_bfloat16_array, si
 
     //complex block fft
     cufftXtExec(fftplans->forwardplan,  gpuarrays->d_ext_data,  gpuarrays->d_ext_data, CUFFT_FORWARD);
+    //printf("AFTER CUFFT===========================================================================\n\n\n\n\n\n\n\n\n\n");
+    //print_1D_bfloat162_array(gpuarrays->d_ext_data, gpuarrays->mem_extsig);
 
     //complex multiplication kernel
     call_kernel_cuda_convolve_reg_1d_halftemps(cblocks, cthreads, gpuarrays->d_kernel, gpuarrays->d_ext_data, gpuarrays->d_ffdot_cpx, params->extlen, params->scale);

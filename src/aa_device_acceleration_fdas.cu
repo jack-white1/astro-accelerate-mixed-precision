@@ -92,6 +92,7 @@ namespace astroaccelerate {
       cmdargs.norm = 1; //
     else
       cmdargs.norm = 0; //
+  	printf("\nCMDARGS.NORM: %d\n", cmdargs.norm);
 
     //get signal parameters
     /*acc_sig.nsamps = cmdargs.mul * 8192;  //
@@ -388,11 +389,18 @@ namespace astroaccelerate {
 	    	bfloat_output_buffer[j] = (__nv_bfloat16)output_buffer[i][dm_count][j];
 	    }*/
 
-	    e = cudaMemcpy(gpuarrays_float.d_in_signal, &output_buffer[i][dm_count], processed*sizeof(float), cudaMemcpyHostToDevice);
+	    /*
+  		for (int j = 0; j < processed; j++){
+    		printf("output_buffer[i][dm_count][%d]: %f\n",j,output_buffer[i][dm_count][j]);
+    	}*/
 
+
+	    e = cudaMemcpy(gpuarrays_float.d_in_signal, output_buffer[i][dm_count], processed*sizeof(float), cudaMemcpyHostToDevice);
+	    
 	    call_kernel_cast_float_to_bfloat16(gpuarrays.d_in_signal, gpuarrays_float.d_in_signal, processed*sizeof(float) );
-	    compare_1D_arrays(gpuarrays.d_in_signal, gpuarrays_float.d_in_signal, processed*sizeof(float));
-
+	    /*
+	    compare_1D_arrays(gpuarrays_float.d_in_signal,gpuarrays.d_in_signal, processed*sizeof(__nv_bfloat16));
+		*/
 
 	    
 
@@ -461,20 +469,18 @@ namespace astroaccelerate {
 
 
 	      //printf("Dimensions for BLN: ibin:%d; siglen:%d;\n", ibin, params.siglen);
-	     /*
+	     
 	      if(NKERN>=32){
 		printf("Block\n");
-		printf("Calling MSD_grid_outlier_rejection with arguments:\n");
-		printf("float *d_MSD: %p, float *d_input: %p, int CellDim_x: %d, int CellDim_y: %d, int nTimesamples: %d, int nDMs: %d, int offset: %d, float multiplier: %f\n", d_MSD, gpuarrays_float.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
 		MSD_grid_outlier_rejection(d_MSD, gpuarrays_float.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
 	      }
 	      else {
 		printf("Point\n");
 		Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      }
-	      */
+	      
 
-	      Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
+	      //Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      //checkCudaErrors(cudaGetLastError());
 
 	      //!TEST!: do not perform peak find instead export the thing to file.
@@ -485,9 +491,9 @@ namespace astroaccelerate {
 #endif
 */
 	      //!TEST!: do not perform peak find instead export the thing to file.
-	      printf("PEAK_FIND_FOR_FDAS start\n");
+	      //printf("PEAK_FIND_FOR_FDAS start\n");
 	      PEAK_FIND_FOR_FDAS(gpuarrays_float.d_ffdot_pwr, gpuarrays_float.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
-	      printf("PEAK_FIND_FOR_FDAS finish\n");
+	      //printf("PEAK_FIND_FOR_FDAS finish\n");
 	      e = cudaMemcpy(h_MSD, d_MSD, 3*sizeof(float), cudaMemcpyDeviceToHost);
 
 	      if(e != cudaSuccess) {

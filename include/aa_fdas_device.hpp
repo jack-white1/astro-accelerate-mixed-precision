@@ -63,19 +63,19 @@ namespace astroaccelerate {
 
   void call_kernel_cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, size_t data_length_bytes);
 
-  __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input);
+  __global__ void cast_bfloat16_to_float(float *d_output, __nv_bfloat16 *d_input, unsigned long long N_floats);
 
   void call_kernel_cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, size_t data_length_bytes);
 
-  __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input);
+  __global__ void cast_bfloat162_to_float2(float2 *d_output, __nv_bfloat162 *d_input, unsigned long long N_floats);
 
   void call_kernel_cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input, size_t data_length_bytes);
 
-  __global__ void cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input);
+  __global__ void cast_float_to_bfloat16(__nv_bfloat16 *d_output, float *d_input, unsigned long long N_floats);
 
   void call_kernel_cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input, size_t data_length_bytes);
 
-  __global__ void cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input);
+  __global__ void cast_float2_to_bfloat162(__nv_bfloat162 *d_output, float2 *d_input, unsigned long long N_floats);
 
 } // namespace astroaccelerate
 

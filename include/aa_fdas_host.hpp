@@ -166,6 +166,10 @@ namespace astroaccelerate {
 
   void compare_host_1D_arrays(float* h_float_array, __nv_bfloat16* h_bfloat16_array, size_t data_length_bytes);
 
+  void print_1D_bfloat16_array(__nv_bfloat16* d_bfloat16_array, size_t data_length_bytes);
+
+  void print_1D_bfloat162_array(__nv_bfloat162* d_bfloat162_array, size_t data_length_bytes);
+
 } // namespace astroaccelerate
   
 #endif // ASTRO_ACCELERATE_AA_FDAS_HOST_HPP
