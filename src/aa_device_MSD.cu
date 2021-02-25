@@ -376,13 +376,13 @@ int MSD_grid_outlier_rejection(float *d_MSD, float *d_input, int CellDim_x, int 
   //printf("call_kernel_MSD_BLN_grid_outlier_rejection finished\n");
 
   //---------> De-allocation of temporary memory
-  printf("cudaFree start\n");
+  //printf("cudaFree start\n");
   cudaFree(d_output);
   e = cudaDeviceSynchronize();
   if (e != cudaSuccess) {
     printf("cudaDeviceSynchronize failure in MSD_grid_outlier_rejection\n");
   }
-	printf("cudaFree finish\n");
+	//printf("cudaFree finish\n");
   return(1);
 }
 
