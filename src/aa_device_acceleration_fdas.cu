@@ -450,8 +450,8 @@ namespace astroaccelerate {
 	    // Calculating base level noise and peak find
 	    if(cmdargs.basic || cmdargs.kfft){
 
-	      fdas_transfer_gpu_arrays_bfloat16_to_float(&gpuarrays_float,&gpuarrays,&cmdargs);
-	      
+	      //fdas_transfer_gpu_arrays_bfloat16_to_float(&gpuarrays_float,&gpuarrays,&cmdargs);
+	      //gpu_arrays.d_ffdot_pwr =  gpu_arrays.d_ffdot_pwr;
 
 	      //------------- Testing BLN
 	      //float signal_mean, signal_sd;
@@ -467,20 +467,32 @@ namespace astroaccelerate {
 	      if ( cudaSuccess != cudaMalloc((void**) &gmem_fdas_peak_pos, 1*sizeof(int))) printf("Allocation error!\n");
 	      cudaMemset((void*) gmem_fdas_peak_pos, 0, sizeof(int));
 
+	      /*
+	      __nv_bfloat162 *test_bfloat;
+	      test_bfloat = (__nv_bfloat162*) malloc(4);
+	      (*test_bfloat).x = (__nv_bfloat16)1024;
+	      (*test_bfloat).y = (__nv_bfloat16)0;
 
+	      printf("test_bfloat: %p, *test_bfloat: %hu\n", test_bfloat, *(unsigned int*)test_bfloat);
+			*/
+
+	      //printf("gpuarrays.d_ffdot_pwr: %p\n",gpuarrays.d_ffdot_pwr);
+
+	      //printf("***********************************************************************FILE WRITING CONTENTS AT: %p\n", gpuarrays.d_ffdot_pwr);
+		//fdas_write_ffdot((float*)(gpuarrays.d_ffdot_pwr), &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      //printf("Dimensions for BLN: ibin:%d; siglen:%d;\n", ibin, params.siglen);
 	     
 	      if(NKERN>=32){
 		printf("Block\n");
-		MSD_grid_outlier_rejection(d_MSD, gpuarrays_float.d_ffdot_pwr, 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
+		MSD_grid_outlier_rejection(d_MSD, (float*)(gpuarrays.d_ffdot_pwr), 32, 32, ibin*params.siglen, NKERN, 0, sigma_constant);
 	      }
 	      else {
 		printf("Point\n");
-		Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
+		Find_MSD(d_MSD, (float*)gpuarrays.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      }
 	      
 
-	      //Find_MSD(d_MSD, gpuarrays_float.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
+	      //Find_MSD(d_MSD, (float*)gpuarrays.d_ffdot_pwr, params.siglen/ibin, NKERN, 0, sigma_constant, 1);
 	      //checkCudaErrors(cudaGetLastError());
 
 	      //!TEST!: do not perform peak find instead export the thing to file.
@@ -492,7 +504,7 @@ namespace astroaccelerate {
 */
 	      //!TEST!: do not perform peak find instead export the thing to file.
 	      //printf("PEAK_FIND_FOR_FDAS start\n");
-	      PEAK_FIND_FOR_FDAS(gpuarrays_float.d_ffdot_pwr, gpuarrays_float.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
+	      PEAK_FIND_FOR_FDAS((float*)(gpuarrays.d_ffdot_pwr), gpuarrays_float.d_fdas_peak_list, d_MSD, NKERN, ibin*params.siglen, cmdargs.thresh, params.max_list_length, gmem_fdas_peak_pos, dm_count*dm_step[i] + dm_low[i]);
 	      //printf("PEAK_FIND_FOR_FDAS finish\n");
 	      e = cudaMemcpy(h_MSD, d_MSD, 3*sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -508,28 +520,32 @@ namespace astroaccelerate {
 
 #ifdef FDAS_ACC_SIG_TEST
 	      fdas_write_list(&gpuarrays_float, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
-	      fdas_write_ffdot(&gpuarrays_float, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
+	      fdas_write_ffdot((float*)(gpuarrays.d_ffdot_pwr), &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      exit(1);
 #endif
 
-	      if (enable_output_fdas_list)
+
+		if (enable_output_fdas_list)
 		{
-		  if(list_size>0)
-		    fdas_write_list(&gpuarrays_float, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
-		}
+			if(list_size>0)
+				fdas_write_list(&gpuarrays_float, &cmdargs, &params, h_MSD, dm_low[i], dm_count, dm_step[i], list_size);
+			}
 	      cudaFree(d_MSD);
 	      cudaFree(gmem_fdas_peak_pos);
 	    }
-	    if (enable_output_ffdot_plan)
+	    //if (enable_output_ffdot_plan)
+	    if (enable_output_ffdot_plan && (((dm_low[i] + ((float)dm_count)*dm_step[i]) < 400.3) && (dm_low[i] + ((float)dm_count)*dm_step[i] > 400.1)))
 	      {
-		fdas_write_ffdot(&gpuarrays_float, &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
+	      	//printf("DONOTHING\n");
+	      	//printf("***********************************************************************FILE WRITING CONTENTS AT: %p\n", gpuarrays.d_ffdot_pwr);
+		fdas_write_ffdot((float*)(gpuarrays.d_ffdot_pwr), &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      }
+	      
 	    // Call sofias code here pass...
 	    // output_buffer[i][dm_count],
-	  }
+		}
 	}
-
-      }
+}
 
     if (cmdargs.search)
       {
@@ -551,7 +567,5 @@ namespace astroaccelerate {
 	 * }
 	 */
       }
-
   }
-
 } //namespace astroaccelerate

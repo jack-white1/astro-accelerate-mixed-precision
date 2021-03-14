@@ -1082,17 +1082,31 @@ namespace astroaccelerate {
     int by = blockIdx.y;
     int tidx = bx* blockDim.x + tx;
     int tidy = by* blockDim.y + ty;
-     
+    
+    //printf("IN KERNEL WRITING CONTENTS AT: %p\n", d_ffdot_plane);
     for (int i = 0; i < total_blocks; ++i){
       if (tidx < sigblock){
-	__nv_bfloat162  local_data =  __ldg(&d_ffdot_plane_cpx[(tidy * sig_tot_convlen) + i*KERNLEN  + tidx + kern_offset ]) ;
-	d_ffdot_plane[ (tidy * sig_totlen) + i*sigblock + tidx] = (local_data.x*local_data.x + local_data.y*local_data.y); 
+        __nv_bfloat162  local_data =  __ldg(&d_ffdot_plane_cpx[(tidy * sig_tot_convlen) + i*KERNLEN  + tidx + kern_offset ]) ;
+        d_ffdot_plane[1+(2*((tidy * sig_totlen) + i*sigblock + tidx))] = (local_data.x*local_data.x + local_data.y*local_data.y);
+        //char* plane = (char*)d_ffdot_plane;
+        //size_t char_offset = offset * 2;
+        //printf("bytes at %p: %hhx, %hhx, %hhx, %hhx\n", plane + char_offset, *(plane + char_offset), *(plane + char_offset + 1), *(plane + char_offset + 2), *(plane + char_offset + 3));
+
+
+  //printf("2x2 bytes %x, %x\n",d_ffdot_plane[2*((tidy * sig_totlen) + i*sigblock + tidx)],d_ffdot_plane[1+2*((tidy * sig_totlen) + i*sigblock + tidx)]);
+  //printf("1x4 byte: %x\n", *((float*)(d_ffdot_plane+2*4*((tidy * sig_totlen) + i*sigblock + tidx))));
+  //printf("FLOAT AT BFLOAT LOCATION %p is %f, in the next position is %f\n",d_ffdot_plane+2*((tidy * sig_totlen) + i*sigblock + tidx),((float*)d_ffdot_plane)[((tidy * sig_totlen) + i*sigblock + tidx)],(float)d_ffdot_plane[1+2*((tidy * sig_totlen) + i*sigblock + tidx)]);
+  //printf("in position: %p, putting the value: %f\n",&d_ffdot_plane[2*((tidy * sig_totlen) + i*sigblock + tidx)],(float)(local_data.x*local_data.x + local_data.y*local_data.y));
       }
     }
   }
 
   void call_kernel_cuda_ffdotpow_concat_2d(const dim3 &blocks, const dim3 &threads, __nv_bfloat162 *const d_ffdot_plane_cpx, __nv_bfloat16 *const d_ffdot_plane, const int &sigblock, const int &kern_offset, const int &total_blocks, const int &sig_tot_convlen, const int &sig_totlen) {
+    //printf("before - in position: %p, there is: %f\n",d_ffdot_plane, (float)d_ffdot_plane);
     cuda_ffdotpow_concat_2d<<<blocks, threads>>>(d_ffdot_plane_cpx, d_ffdot_plane, sigblock, kern_offset, total_blocks, sig_tot_convlen, sig_totlen);
+    //printf("after - in position: %p\n",d_ffdot_plane);
+    //printf("after - there is: %f\n",(float) (d_ffdot_plane[0]));
+
   }
 
   __global__ void cuda_ffdotpow_concat_2d_inbin(__nv_bfloat162* d_ffdot_plane_cpx, __nv_bfloat16* d_ffdot_plane, int sigblock, int kern_offset, int total_blocks, int sig_tot_convlen, int sig_totlen)
@@ -1141,7 +1155,7 @@ namespace astroaccelerate {
 	//write data back to global memory contiguously
 	unsigned int inbin_idx = (unsigned int)(2*by*sig_totlen + i*2*sigblock + 2*bx*blockDim.x) + tx;
 	d_ffdot_plane[inbin_idx] = local_data_inbin[tx]; 
-	d_ffdot_plane[inbin_idx + PTBSIZEX] = local_data_inbin[tx + PTBSIZEX]; 
+	d_ffdot_plane[inbin_idx + PTBSIZEX] = local_data_inbin[tx + PTBSIZEX];
       }
     }
   }

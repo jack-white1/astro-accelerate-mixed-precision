@@ -92,14 +92,14 @@ namespace astroaccelerate {
     }
 
     //ffdot planes
-    e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot );
+    e = cudaMalloc((void**)&arrays->d_ffdot_pwr, arrays->mem_ffdot *2 );
     if(e != cudaSuccess) {
       e_final = e;
       LOG(log_level::error, "Could not cudaMalloc in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
     }
     
     //initialise array
-    e = cudaMemset(arrays->d_ffdot_pwr, 0, arrays->mem_ffdot);
+    e = cudaMemset(arrays->d_ffdot_pwr, 0, arrays->mem_ffdot *2);
 
     if(e != cudaSuccess) {
 
@@ -691,52 +691,89 @@ void print_1D_bfloat162_array(__nv_bfloat162* d_bfloat162_array, size_t data_len
     free(f2temp);
 #endif
 
-    /*if (cmdargs->norm){
+    if (cmdargs->norm){
       //  PRESTO deredden - remove red noise.
       // TODO: replace with GPU version
-      float2 *fftsig;
-      fftsig = (float2*)malloc((params->rfftlen)*sizeof(float2)); 
-    
-      cudaError_t e = cudaMemcpy(fftsig, gpuarrays->d_fft_signal, (params->rfftlen)*sizeof(float2), cudaMemcpyDeviceToHost);
+      __nv_bfloat162 *fftsig;
+      float2 *fftsig_float2;
+      fftsig = (__nv_bfloat162*)malloc((params->rfftlen)*sizeof(__nv_bfloat162));
+      fftsig_float2 = (float2*)malloc((params->rfftlen)*sizeof(float2));
 
-      if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
-      }
+      cudaError_t e = cudaMemcpy(fftsig, gpuarrays->d_fft_signal, (params->rfftlen)*sizeof(__nv_bfloat162), cudaMemcpyDeviceToHost);
       
-      presto_dered_sig(fftsig, params->rfftlen);
-      e = cudaMemcpy(gpuarrays->d_fft_signal, fftsig, (params->rfftlen)*sizeof(float2), cudaMemcpyHostToDevice);
+      if(e != cudaSuccess) {
+        LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu 1(" + std::string(cudaGetErrorString(e)) + ")");
+      }
+
+
+      for (int i = 0;i < params->rfftlen; i++ ){
+        fftsig_float2[i].x = (float) fftsig[i].x;
+        fftsig_float2[i].y = (float) fftsig[i].y;
+      }
+    
+      
+
+      
+      presto_dered_sig(fftsig_float2, params->rfftlen);
+
+      for (int i = 0;i < params->rfftlen; i++){
+        fftsig[i].x = (__nv_bfloat16) fftsig_float2[i].x;
+        fftsig[i].y = (__nv_bfloat16) fftsig_float2[i].y;
+      }
+
+      e = cudaMemcpy(gpuarrays->d_fft_signal, fftsig, (params->rfftlen)*sizeof(__nv_bfloat162), cudaMemcpyHostToDevice);
 
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu 2(" + std::string(cudaGetErrorString(e)) + ")");
       }
       
       free(fftsig);
-    }*/
+      free(fftsig_float2);
+    }
     
     //overlap-copy
     call_kernel_cuda_overlap_copy(gpuarrays->d_ext_data, gpuarrays->d_fft_signal, params->sigblock, params->rfftlen, params->extlen, params->offset, params->nblocks );
 
-    /*if (cmdargs->norm){
+    if (cmdargs->norm){
       //  PRESTO block median normalization
       // TODO: replace with GPU version
-      float2 *extsig;
-      extsig = (float2*)malloc((params->extlen)*sizeof(float2));
-      cudaError_t e = cudaMemcpy(extsig, gpuarrays->d_ext_data, (params->extlen)*sizeof(float2), cudaMemcpyDeviceToHost);
+      float2 *extsig_float2;
+      __nv_bfloat162 *extsig;
+
+      extsig_float2 = (float2*)malloc((params->extlen)*sizeof(float2));
+      extsig = (__nv_bfloat162*)malloc((params->extlen)*sizeof(__nv_bfloat162));
+      cudaError_t e = cudaMemcpy(extsig, gpuarrays->d_ext_data, (params->extlen)*sizeof(__nv_bfloat162), cudaMemcpyDeviceToHost);
+
+
 
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu 3(" + std::string(cudaGetErrorString(e)) + ")");
       }
       
+      for (int i = 0;i < params->extlen; i++){
+        extsig_float2[i].x = (float) extsig[i].x;
+        extsig_float2[i].y = (float) extsig[i].y;
+      }
+
+
       for(int b=0; b<params->nblocks; ++b)
-	presto_norm(extsig+b*KERNLEN, KERNLEN);
-      e = cudaMemcpy(gpuarrays->d_ext_data, extsig, (params->extlen)*sizeof(float2), cudaMemcpyHostToDevice);
+	presto_norm(extsig_float2+b*KERNLEN, KERNLEN);
+
+      for (int i = 0;i < params->extlen; i++){
+        extsig[i].x = (__nv_bfloat16) extsig_float2[i].x;
+        extsig[i].y = (__nv_bfloat16) extsig_float2[i].y;
+      }
+
+
+      e = cudaMemcpy(gpuarrays->d_ext_data, extsig, (params->extlen)*sizeof(__nv_bfloat162), cudaMemcpyHostToDevice);
 
       if(e != cudaSuccess) {
-	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu (" + std::string(cudaGetErrorString(e)) + ")");
+	LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu 4(" + std::string(cudaGetErrorString(e)) + ")");
       }
       
       free(extsig);
-    }*/
+      free(extsig_float2);
+    }
 
     //complex block fft
     cufftXtExec(fftplans->forwardplan,  gpuarrays->d_ext_data,  gpuarrays->d_ext_data, CUFFT_FORWARD);
@@ -940,19 +977,19 @@ void print_1D_bfloat162_array(__nv_bfloat162* d_bfloat162_array, size_t data_len
 
 
   /** \brief Write ffdot output data to disk. */
-  void fdas_write_ffdot(fdas_gpuarrays_float *gpuarrays, cmd_args *cmdargs, fdas_params *params, float dm_low, int dm_count, float dm_step ) {
+  void fdas_write_ffdot(float* d_ffdot_pwr , cmd_args *cmdargs, fdas_params *params, float dm_low, int dm_count, float dm_step ) {
     printf("FDAS_WRITE_FFDOT CALLED\n");
     int ibin=1;
     if (cmdargs->inbin)
       ibin=2;
     // Download, threshold and write ffdot data to file
     //int nsamps = params->nsamps;
-
+    printf("d_ffdot_pwr: %p\n",d_ffdot_pwr);
     printf("\n\nWrite data for signal with %d samples\nf-fdot size=%u\n",params->nsamps, params->ffdotlen);
     float *h_ffdotpwr = (float*)malloc(params->ffdotlen* sizeof(float));
     //download data
-    cudaError_t e = cudaMemcpy(h_ffdotpwr, gpuarrays->d_ffdot_pwr, params->ffdotlen*sizeof(float), cudaMemcpyDeviceToHost);
-
+    cudaError_t e = cudaMemcpy(h_ffdotpwr, d_ffdot_pwr, params->ffdotlen*sizeof(float), cudaMemcpyDeviceToHost);
+    printf("data at %p: %x\n", h_ffdotpwr, *h_ffdotpwr);
     if(e != cudaSuccess) {
       LOG(log_level::error, "Could not cudaMemcpy in aa_fdas_host.cu fdas_write_ffdot (" + std::string(cudaGetErrorString(e)) + ")");
     }
