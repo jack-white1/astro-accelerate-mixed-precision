@@ -1057,13 +1057,13 @@ void print_1D_bfloat162_array(__nv_bfloat162* d_bfloat162_array, size_t data_len
       for( int j = 0; j < ibin*params->siglen; j++){
 	pow =  h_ffdotpwr[a * ibin*params->siglen + j]; //(h_ffdotpwr[a * params->siglen + j]-mean)/stddev;
 		
-	if( pow > cmdargs->thresh) {
+	//if( pow > cmdargs->thresh) {
 	  sigma = candidate_sigma(pow, cmdargs->nharms, numindep);//power, number of harmonics, number of independed searches=1...2^harms
 	  //  sigma=1.0;
 	  double jfreq = (double)(j) / tobs;
 	  double acc1 = acc*SLIGHT / jfreq / tobs / tobs;
 	  fprintf(fp_c, "%.2f\t%.3f\t%u\t%.3f\t%.3f\t%.3f\n", acc, acc1, j , jfreq, pow, sigma);
-	}    
+	//}    
       }
     }
 

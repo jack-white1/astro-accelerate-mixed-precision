@@ -534,13 +534,15 @@ namespace astroaccelerate {
 	      cudaFree(gmem_fdas_peak_pos);
 	    }
 	    //if (enable_output_ffdot_plan)
-	    if (enable_output_ffdot_plan && (((dm_low[i] + ((float)dm_count)*dm_step[i]) < 400.3) && (dm_low[i] + ((float)dm_count)*dm_step[i] > 400.1)))
+
+
+	    if (enable_output_ffdot_plan && (((dm_low[i] + ((float)dm_count)*dm_step[i]) < 49.81) && (dm_low[i] + ((float)dm_count)*dm_step[i] > 49.79)))
 	      {
-	      	//printf("DONOTHING\n");
-	      	//printf("***********************************************************************FILE WRITING CONTENTS AT: %p\n", gpuarrays.d_ffdot_pwr);
-		fdas_write_ffdot((float*)(gpuarrays.d_ffdot_pwr), &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
+			fdas_write_ffdot((float*)(gpuarrays.d_ffdot_pwr), &cmdargs, &params, dm_low[i], dm_count, dm_step[i]);
 	      }
-	      
+
+
+
 	    // Call sofias code here pass...
 	    // output_buffer[i][dm_count],
 		}
